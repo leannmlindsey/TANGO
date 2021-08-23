@@ -65,8 +65,8 @@ void proteinSampleRun(string refFile, string queFile, string out_file){
   }
 
 
-
-
+    int maxCIGAR = largestA + largestB;
+ 
     short scores_matrix[] = {4 ,-1 ,-2 ,-2 ,0 ,-1 ,-1 ,0 ,-2 ,-1 ,-1 ,-1 ,-1 ,-2 ,-1 ,1 ,0 ,-3 ,-2 ,0 ,-2 ,-1 ,0 ,-4 , -1 ,5 ,0 ,-2 ,-3 ,1 ,0 ,-2 ,0 ,-3 ,-2 ,2 ,-1 ,-3 ,-2 ,-1 ,-1 ,-3 ,-2 ,-3 ,-1 ,0 ,-1 ,-4 ,
     -2 ,0 ,6 ,1 ,-3 ,0 ,0 ,0 ,1 ,-3 ,-3 ,0 ,-2 ,-3 ,-2 ,1 ,0 ,-4 ,-2 ,-3 ,3 ,0 ,-1 ,-4 ,
     -2 ,-2 ,1 ,6 ,-3 ,0 ,2 ,-1 ,-1 ,-3 ,-4 ,-1 ,-3 ,-3 ,-1 ,0 ,-1 ,-4 ,-3 ,-3 ,4 ,1 ,-1 ,-4 ,
@@ -120,7 +120,7 @@ void proteinSampleRun(string refFile, string queFile, string out_file){
    };*/
 
     gpu_bsw_driver::alignment_results results_test;
-    gpu_bsw_driver::kernel_driver_aa(G_sequencesB, G_sequencesA, &results_test, scores_matrix, -6, -1, 0.5);
+    gpu_bsw_driver::kernel_driver_aa(G_sequencesB, G_sequencesA, &results_test, maxCIGAR, scores_matrix, -6, -1, 0.5);
 
   //  gpu_bsw_driver::verificationTest(resultFile, results_test.g_alAbeg, results_test.g_alBbeg, results_test.g_alAend, results_test.g_alBend);
 
@@ -204,13 +204,15 @@ void dnaSampleRun(string refFile, string queFile, string out_file){
       quer_file.close();
   }
 
+  int maxCIGAR = largestA + largestB;
+
   gpu_bsw_driver::alignment_results results_test;
 
 
   short scores[] = {1, -3, -3, -1};
   ofstream results_file(out_file);
 
-  gpu_bsw_driver::kernel_driver_dna(G_sequencesB, G_sequencesA,&results_test, scores, 0.5);
+  gpu_bsw_driver::kernel_driver_dna(G_sequencesB, G_sequencesA,&results_test, maxCIGAR, scores, 0.5);
   for(int k = 0; k < G_sequencesA.size(); k++){
         results_file<<results_test.top_scores[k]<<"\t"
                 <<results_test.ref_begin[k]<<"\t"

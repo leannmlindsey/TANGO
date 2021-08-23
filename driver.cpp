@@ -13,11 +13,12 @@ size_t gpu_bsw_driver::get_tot_gpu_mem(int id) {
   return prop.totalGlobalMem;
 }
 void
-gpu_bsw_driver::kernel_driver_dna(std::vector<std::string> reads, std::vector<std::string> contigs, gpu_bsw_driver::alignment_results *alignments, short scores[4], float factor)
+gpu_bsw_driver::kernel_driver_dna(std::vector<std::string> reads, std::vector<std::string> contigs, gpu_bsw_driver::alignment_results *alignments, int maxCIGAR, short scores[4], float factor)
 {
     short matchScore = scores[0], misMatchScore = scores[1], startGap = scores[2], extendGap = scores[3];
     unsigned maxContigSize = getMaxLength(contigs);
     unsigned maxReadSize = getMaxLength(reads);
+    unsigned maxMatrixSize = (maxContigSize + 1 ) * (maxReadSize + 1);
     unsigned totalAlignments = contigs.size(); // assuming that read and contig vectors are same length
 
     int deviceCount;
@@ -30,7 +31,7 @@ gpu_bsw_driver::kernel_driver_dna(std::vector<std::string> reads, std::vector<st
     unsigned leftOver_device     = NBLOCKS % deviceCount;
     unsigned max_per_device = alignmentsPerDevice + leftOver_device;
 
-    initialize_alignments(alignments, totalAlignments); // pinned memory allocation
+    initialize_alignments(alignments, totalAlignments, maxCIGAR); // pinned memory allocation
     auto start = NOW;
 
     size_t tot_mem_req_per_aln = maxReadSize + maxContigSize + 2 * sizeof(int) + 5 * sizeof(short);
@@ -61,13 +62,14 @@ gpu_bsw_driver::kernel_driver_dna(std::vector<std::string> reads, std::vector<st
             BLOCKS_l += leftOver_device;
         unsigned leftOvers    = BLOCKS_l % its;
         unsigned stringsPerIt = BLOCKS_l / its;
-        gpu_alignments gpu_data(stringsPerIt + leftOvers); // gpu mallocs
+        gpu_alignments gpu_data(stringsPerIt + leftOvers, maxCIGAR, maxMatrixSize); // gpu mallocs
 
         short* alAbeg = alignments->ref_begin + my_cpu_id * alignmentsPerDevice;
         short* alBbeg = alignments->query_begin + my_cpu_id * alignmentsPerDevice;
         short* alAend = alignments->ref_end + my_cpu_id * alignmentsPerDevice;
         short* alBend = alignments->query_end + my_cpu_id * alignmentsPerDevice;  // memory on CPU for copying the results
         short* top_scores_cpu = alignments->top_scores + my_cpu_id * alignmentsPerDevice;
+        
         unsigned* offsetA_h;// = new unsigned[stringsPerIt + leftOvers];
         cudaMallocHost(&offsetA_h, sizeof(int)*(stringsPerIt + leftOvers));
         unsigned* offsetB_h;// = new unsigned[stringsPerIt + leftOvers];
@@ -243,10 +245,11 @@ gpu_bsw_driver::kernel_driver_dna(std::vector<std::string> reads, std::vector<st
 }// end of DNA kernel
 
 void
-gpu_bsw_driver::kernel_driver_aa(std::vector<std::string> reads, std::vector<std::string> contigs, gpu_bsw_driver::alignment_results *alignments, short scoring_matrix[], short openGap, short extendGap, float factor)
+gpu_bsw_driver::kernel_driver_aa(std::vector<std::string> reads, std::vector<std::string> contigs, gpu_bsw_driver::alignment_results *alignments, int maxCIGAR, short scoring_matrix[], short openGap, short extendGap, float factor)
 {
     unsigned maxContigSize = getMaxLength(contigs);
     unsigned maxReadSize = getMaxLength(reads);
+    unsigned maxMatrixSize = (maxContigSize + 1 ) * (maxReadSize + 1);
     unsigned totalAlignments = contigs.size(); // assuming that read and contig vectors are same length
 
     short encoding_matrix[] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,
@@ -271,7 +274,7 @@ gpu_bsw_driver::kernel_driver_aa(std::vector<std::string> reads, std::vector<std
     unsigned leftOver_device     = NBLOCKS % deviceCount;
     unsigned max_per_device = alignmentsPerDevice + leftOver_device;
     
-    initialize_alignments(alignments, totalAlignments); // pinned memory allocation
+    initialize_alignments(alignments, totalAlignments, maxCIGAR); // pinned memory allocation
     auto start = NOW;
     size_t tot_mem_req_per_aln = maxReadSize + maxContigSize + 2 * sizeof(int) + 5 * sizeof(short);
     #pragma omp parallel
@@ -300,7 +303,7 @@ gpu_bsw_driver::kernel_driver_aa(std::vector<std::string> reads, std::vector<std
           BLOCKS_l += leftOver_device;
       unsigned leftOvers    = BLOCKS_l % its;
       unsigned stringsPerIt = BLOCKS_l / its;
-      gpu_alignments gpu_data(stringsPerIt + leftOvers); // gpu mallocs
+      gpu_alignments gpu_data(stringsPerIt + leftOvers, maxCIGAR, maxMatrixSize); // gpu mallocs
       short *d_encoding_matrix, *d_scoring_matrix;
       cudaErrchk(cudaMalloc(&d_encoding_matrix, ENCOD_MAT_SIZE * sizeof(short)));
       cudaErrchk(cudaMalloc(&d_scoring_matrix, SCORE_MAT_SIZE * sizeof(short)));

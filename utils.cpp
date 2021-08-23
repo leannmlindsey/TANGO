@@ -10,12 +10,13 @@ unsigned getMaxLength (std::vector<std::string> v)
   return maxLength;
 }
 
-void initialize_alignments(gpu_bsw_driver::alignment_results *alignments, int max_alignments){
+void initialize_alignments(gpu_bsw_driver::alignment_results *alignments, int max_alignments, int maxCIGAR){
     cudaMallocHost(&(alignments->ref_begin), sizeof(short)*max_alignments);
     cudaMallocHost(&(alignments->ref_end), sizeof(short)*max_alignments);
     cudaMallocHost(&(alignments->query_begin), sizeof(short)*max_alignments);
     cudaMallocHost(&(alignments->query_end), sizeof(short)*max_alignments);
     cudaMallocHost(&(alignments->top_scores), sizeof(short)*max_alignments);
+    cudaMallocHost(&(alignments->CIGAR), sizeof(char)*maxCIGAR*max_alignments);
 }
 
 void free_alignments(gpu_bsw_driver::alignment_results *alignments){
@@ -24,6 +25,7 @@ void free_alignments(gpu_bsw_driver::alignment_results *alignments){
        cudaErrchk(cudaFreeHost(alignments->query_begin));
        cudaErrchk(cudaFreeHost(alignments->query_end));
        cudaErrchk(cudaFreeHost(alignments->top_scores));
+       cudaErrchk(cudaFreeHost(alignments->CIGAR));
 
 }
 
