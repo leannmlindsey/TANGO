@@ -198,7 +198,9 @@ __device__ __host__ short
 __global__ void
 gpu_bsw::sequence_dna_kernel(char* seqA_array, char* seqB_array, unsigned* prefix_lengthA,
                     unsigned* prefix_lengthB, short* seqA_align_begin, short* seqA_align_end,
-                    short* seqB_align_begin, short* seqB_align_end, short* top_scores, short matchScore, short misMatchScore, short startGap, short extendGap)
+                    short* seqB_align_begin, short* seqB_align_end, short* top_scores, char* longCIGAR_array, 
+                    char* CIGAR_array, char* H_ptr_array, char* E_ptr_array, char* F_ptr_array, 
+                    int maxCIGAR, int maxMatrixSize, short matchScore, short misMatchScore, short startGap, short extendGap)
 {
     int block_Id  = blockIdx.x;
     int thread_Id = threadIdx.x;
@@ -397,7 +399,9 @@ gpu_bsw::sequence_dna_kernel(char* seqA_array, char* seqB_array, unsigned* prefi
 __global__ void
 gpu_bsw::sequence_dna_reverse(char* seqA_array, char* seqB_array, unsigned* prefix_lengthA,
                     unsigned* prefix_lengthB, short* seqA_align_begin, short* seqA_align_end,
-                    short* seqB_align_begin, short* seqB_align_end, short* top_scores, short matchScore, short misMatchScore, short startGap, short extendGap){
+                    short* seqB_align_begin, short* seqB_align_end, short* top_scores, char* longCIGAR_array, 
+                    char* CIGAR_array, char* H_ptr_array, char* E_ptr_array, char* F_ptr_array, 
+                    int maxCIGAR, int maxMatrixSize, short matchScore, short misMatchScore, short startGap, short extendGap){
 
       int block_Id  = blockIdx.x;
       int thread_Id = threadIdx.x;
