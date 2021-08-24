@@ -33,6 +33,13 @@ __device__ __host__ short
 __device__ __host__ short
             findMaxFour(short first, short second, short third, short fourth, int* ind);
 
+__device__ short
+intToCharPlusWrite(int num, char* CIGAR, short cigar_position)
+
+__device__ void
+createCIGAR(char* longCIGAR, char* CIGAR, int maxCIGAR, 
+        const char* seqA, const char* seqB, unsigned lengthShorterSeq, unsigned lengthLo
+
 __device__ void
 traceBack(short current_i, short current_j, char* seqA_array, char* seqB_array, unsigned* prefix_lengthA, 
                     unsigned* prefix_lengthB, short* seqA_align_begin, short* seqA_align_end,

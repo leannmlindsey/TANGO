@@ -212,6 +212,104 @@ __device__ __host__ short
     return maxScore;
 }
 
+__device__ short
+gpu_bsw::intToCharPlusWrite(int num, char* CIGAR, short cigar_position)
+{
+  
+    int myId  = blockIdx.x;
+    int myTId = threadIdx.x;
+    int last_digit = 0;
+    int digit_length = 0;
+    char digit_array[5];
+
+    // convert the int num to ASCII digit by digit and record in a digit_array
+    while (num != 0){
+        last_digit = num%10;
+        digit_array[digit_length] = char('0' + last_digit);
+        num = num/10;
+        digit_length++;
+    }
+
+    //write each char of the digit_array to the CIGAR string
+    for (int q = 0; q < digit_length; q++){
+        CIGAR[cigar_position]=digit_array[q];
+        cigar_position++; 
+    }
+
+    return cigar_position;
+}
+
+__device__ void
+gpu_bsw::createCIGAR(char* longCIGAR, char* CIGAR, int maxCIGAR, 
+        const char* seqA, const char* seqB, unsigned lengthShorterSeq, unsigned lengthLongerSeq, 
+        bool seqBShorter, short first_j, short last_j, short first_i, short last_i) 
+{
+    int myId  = blockIdx.x;
+    int myTId = threadIdx.x;
+    short cigar_position = 0;
+    int last_digit = 0;
+
+    short beg_S;
+    short end_S;
+
+    const char* longerSeq;
+    const char* shorterSeq;
+    
+    if (seqBShorter){
+        longerSeq = seqA;
+        shorterSeq = seqB;
+        beg_S = lengthShorterSeq - first_j;
+        end_S = last_j-1; 
+    } else {
+        longerSeq = seqB;
+        shorterSeq = seqA;
+        beg_S = lengthLongerSeq - first_i; 
+        end_S = last_i-1;
+    }
+    
+    if ( beg_S != 0){
+        CIGAR[cigar_position]='S';
+        cigar_position++ ; 
+        cigar_position = intToCharPlusWrite(beg_S, CIGAR, cigar_position);
+    }
+
+    int q = 0;
+
+    int p = 0;
+    while(longCIGAR[p] != '\0'){
+        int digit_length = 0;
+        char digit_array[5];
+        int letter_count = 1;
+        
+        while (longCIGAR[p] == longCIGAR[p+1]){
+            letter_count++; 
+            p++; 
+        }
+
+        CIGAR[cigar_position]=longCIGAR[p];
+        cigar_position++ ; 
+
+        cigar_position = intToCharPlusWrite(letter_count, CIGAR, cigar_position); 
+        p++;
+    }
+
+    if ( end_S != 0){
+        CIGAR[cigar_position]='S';
+        cigar_position++ ; 
+        cigar_position = intToCharPlusWrite(end_S, CIGAR, cigar_position);
+    
+    }    
+    cigar_position--;
+    char temp;
+
+    for(int i = 0; i<(cigar_position)/2+1;i++){
+        temp = CIGAR[i]; 
+        CIGAR[i]=CIGAR[cigar_position-i]; 
+        CIGAR[cigar_position-i] = temp; 
+    }
+
+}
+
 __device__ void
 gpu_bsw::traceBack(short current_i, short current_j, char* seqA_array, char* seqB_array, unsigned* prefix_lengthA, 
                     unsigned* prefix_lengthB, short* seqA_align_begin, short* seqA_align_end,
