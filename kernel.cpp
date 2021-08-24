@@ -184,13 +184,30 @@ gpu_bsw::blockShuffleReduce_with_index(short myVal, short& myIndex, short& myInd
 
 
 __device__ __host__ short
-           gpu_bsw::findMaxFour(short first, short second, short third, short fourth)
+           gpu_bsw::findMaxFour(short first, short second, short third, short fourth, int* ind)
 {
-    short maxScore = 0;
 
-    maxScore = max(first,second);
-    maxScore = max(maxScore, third);
-    maxScore = max(maxScore, fourth);
+    short traceback[4];
+    traceback[0] = first;
+    traceback[1] = second;
+    traceback[2] = third;
+    traceback[3] = fourth;
+
+    short maxScore = 0;
+    *ind = 0;
+
+    for (int i=0; i<4; i++){
+      if (traceback[i] > maxScore){
+        maxScore = traceback[i];
+        *ind = i;
+      }
+    }
+    //maxScore = 0;
+
+    //maxScore = max(first, second);
+    //maxScore = max(maxScore, third);
+    //maxScore = max(maxScore, fourth);
+
 
     return maxScore;
 }
@@ -263,9 +280,11 @@ gpu_bsw::sequence_dna_kernel(char* seqA_array, char* seqB_array, unsigned* prefi
     __syncthreads(); // this is required here so that complete sequence has been copied to shared memory
 
     int   i            = 1;
+    int   j            = thread_Id;
     short thread_max   = 0; // to maintain the thread max score
     short thread_max_i = 0; // to maintain the DP coordinate i for the longer string
     short thread_max_j = 0;// to maintain the DP cooirdinate j for the shorter string
+    int ind;
 
   //initializing registers for storing diagonal values for three recent most diagonals (separate tables for
   //H, E and F)
@@ -366,7 +385,7 @@ gpu_bsw::sequence_dna_kernel(char* seqA_array, char* seqB_array, unsigned* prefi
 
           if(warpId == 0 && laneId == 0) final_prev_prev_H = 0;
           short diag_score = final_prev_prev_H + ((longer_seq[i - 1] == myColumnChar) ? matchScore : misMatchScore);
-          _curr_H = findMaxFour(diag_score, _curr_F, _curr_E, 0);
+          _curr_H = findMaxFour(diag_score, _curr_F, _curr_E, 0, &ind);
           thread_max_i = (thread_max >= _curr_H) ? thread_max_i : i;
           thread_max_j = (thread_max >= _curr_H) ? thread_max_j : thread_Id + 1;
           thread_max   = (thread_max >= _curr_H) ? thread_max : _curr_H;
@@ -467,9 +486,11 @@ gpu_bsw::sequence_dna_reverse(char* seqA_array, char* seqB_array, unsigned* pref
 
 
       int   i            = 1;
+      int   j            = thread_Id;
       short thread_max   = 0; // to maintain the thread max score
       short thread_max_i = 0; // to maintain the DP coordinate i for the longer string
       short thread_max_j = 0;// to maintain the DP cooirdinate j for the shorter string
+      int ind;
 
     //initializing registers for storing diagonal values for three recent most diagonals (separate tables for
     //H, E and F)
@@ -579,7 +600,7 @@ gpu_bsw::sequence_dna_reverse(char* seqA_array, char* seqB_array, unsigned* pref
             if(warpId == 0 && laneId == 0) final_prev_prev_H = 0;
 
             short diag_score = final_prev_prev_H + ((longer_seq[(maxSize - i )] == myColumnChar)? matchScore : misMatchScore);
-            _curr_H = findMaxFour(diag_score, _curr_F, _curr_E, 0);
+            _curr_H = findMaxFour(diag_score, _curr_F, _curr_E, 0, &ind);
             thread_max_i = (thread_max >= _curr_H) ? thread_max_i : maxSize - i;
             thread_max_j = (thread_max >= _curr_H) ? thread_max_j : minSize - thread_Id -1;
             thread_max   = (thread_max >= _curr_H) ? thread_max : _curr_H;
@@ -670,9 +691,11 @@ gpu_bsw::sequence_aa_kernel(char* seqA_array, char* seqB_array, unsigned* prefix
   __syncthreads(); // this is required here so that complete sequence has been copied to shared memory
 
   int   i            = 1;
+  int   j            = thread_Id;
   short thread_max   = 0; // to maintain the thread max score
   short thread_max_i = 0; // to maintain the DP coordinate i for the longer string
   short thread_max_j = 0;// to maintain the DP cooirdinate j for the shorter string
+  int ind;
 
 //initializing registers for storing diagonal values for three recent most diagonals (separate tables for
 //H, E and F)
@@ -793,7 +816,7 @@ gpu_bsw::sequence_aa_kernel(char* seqA_array, char* seqB_array, unsigned* prefix
 
         short diag_score = final_prev_prev_H + add_score;
 
-        _curr_H = findMaxFour(diag_score, _curr_F, _curr_E, 0);
+        _curr_H = findMaxFour(diag_score, _curr_F, _curr_E, 0, &ind);
         thread_max_i = (thread_max >= _curr_H) ? thread_max_i : i;
         thread_max_j = (thread_max >= _curr_H) ? thread_max_j : thread_Id + 1;
         thread_max   = (thread_max >= _curr_H) ? thread_max : _curr_H;
@@ -896,9 +919,11 @@ gpu_bsw::sequence_aa_reverse(char* seqA_array, char* seqB_array, unsigned* prefi
 
 
       int   i            = 1;
+      int   j            = thread_Id;
       short thread_max   = 0; // to maintain the thread max score
       short thread_max_i = 0; // to maintain the DP coordinate i for the longer string
       short thread_max_j = 0;// to maintain the DP cooirdinate j for the shorter string
+      int ind;
 
     //initializing registers for storing diagonal values for three recent most diagonals (separate tables for
     //H, E and F)
@@ -1027,7 +1052,7 @@ gpu_bsw::sequence_aa_reverse(char* seqA_array, char* seqB_array, unsigned* prefi
             short add_score = sh_aa_scoring[mat_index_q*24 + mat_index_r]; // doesnt really matter in what order these indices are used, since the scoring table is symmetrical
 
             short diag_score = final_prev_prev_H + add_score;
-            _curr_H = findMaxFour(diag_score, _curr_F, _curr_E, 0);
+            _curr_H = findMaxFour(diag_score, _curr_F, _curr_E, 0, &ind);
 
             thread_max_i = (thread_max >= _curr_H) ? thread_max_i : maxSize - i ;//i;// begin_A (longer string)
             thread_max_j = (thread_max >= _curr_H) ? thread_max_j : minSize - thread_Id -1; // begin_B (shorter string)

@@ -31,7 +31,7 @@ __device__ __host__ short
            findMax(short array[], int length, int* ind);
 
 __device__ __host__ short
-            findMaxFour(short first, short second, short third, short fourth);
+            findMaxFour(short first, short second, short third, short fourth, int* ind);
 
 __device__ void
 traceBack(short current_i, short current_j, short* seqA_align_begin,
