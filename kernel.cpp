@@ -212,6 +212,297 @@ __device__ __host__ short
     return maxScore;
 }
 
+__device__ void
+gpu_bsw::traceBack(short current_i, short current_j, char* seqA_array, char* seqB_array, unsigned* prefix_lengthA, 
+                    unsigned* prefix_lengthB, short* seqA_align_begin, short* seqA_align_end,
+                    short* seqB_align_begin, short* seqB_align_end, int maxMatrixSize, int maxCIGAR,
+                    char* longCIGAR_array, char* CIGAR_array, char* H_ptr_array, char* E_ptr_array, char* F_ptr_array, unsigned int* diagOffset){
+
+    int myId = blockIdx.x;
+    int myTId = threadIdx.x; 
+
+    char*    seqA;
+    char*    seqB;
+
+    int lengthSeqA;
+    int lengthSeqB;
+
+    if(myId == 0)
+    {
+        lengthSeqA = prefix_lengthA[0];
+        lengthSeqB = prefix_lengthB[0];
+        seqA       = seqA_array;
+        seqB       = seqB_array;
+    
+    }
+    else
+    {
+        lengthSeqA = prefix_lengthA[myId] - prefix_lengthA[myId - 1];
+        lengthSeqB = prefix_lengthB[myId] - prefix_lengthB[myId - 1];
+        seqA       = seqA_array + prefix_lengthA[myId - 1];
+        seqB       = seqB_array + prefix_lengthB[myId - 1];
+
+    }
+    char* H_ptr, *E_ptr, *F_ptr;
+    //I_score     = I_score_array + (myId * maxMatrixSize);
+    H_ptr       = H_ptr_array + (myId * maxMatrixSize);
+    E_ptr       = E_ptr_array + (myId * maxMatrixSize);
+    F_ptr       = F_ptr_array + (myId * maxMatrixSize);
+  
+    char* CIGAR, *longCIGAR;
+    CIGAR = CIGAR_array + (myId * maxCIGAR);
+
+    unsigned short current_diagId;     // = current_i+current_j;
+    unsigned short current_locOffset;  // = 0;
+    unsigned short last_diagId;
+    unsigned short last_locOffset;
+    unsigned maxSize = lengthSeqA > lengthSeqB ? lengthSeqA : lengthSeqB;
+    bool gapOpen = 0;
+
+    const char* longerSeq = lengthSeqA < lengthSeqB ? seqB : seqA; 
+    const char* shorterSeq = lengthSeqA < lengthSeqB ? seqA : seqB; 
+    unsigned lengthShorterSeq = lengthSeqA < lengthSeqB ? lengthSeqA : lengthSeqB;  
+    unsigned lengthLongerSeq = lengthSeqA < lengthSeqB ? lengthSeqB : lengthSeqA;    
+    bool seqBShorter = lengthSeqA < lengthSeqB ? false : true;  //need to keep track of whether query or ref is shorter for CIGAR 
+
+    current_diagId    = current_i + current_j;
+    current_locOffset = 0;
+    if(current_diagId < maxSize + 1)
+    {
+        current_locOffset = current_j;
+    }
+    else
+    {
+        unsigned short myOff = current_diagId - maxSize;
+        current_locOffset    = current_j - myOff;
+    }
+
+    //if(myId == 0 && myTId ==0){
+        //printf("Beginning Traceback\n");
+        //printf("diagID:%d locoffset:%d current_i:%d, current_j:%d\n\n",current_diagId, current_locOffset, current_i, current_j);
+
+    //}
+    
+    short next_i;
+    short next_j;
+    short last_i = 0;
+    short last_j = 0;
+
+    switch (H_ptr[diagOffset[current_diagId] + current_locOffset]){
+        case '\\' :
+            next_i = current_i - 1;
+            next_j = current_j - 1;
+            break;
+        case '|' :
+            next_i = current_i - 1;
+            next_j = current_j;
+            break;
+        case '-' :
+            next_i = current_i;
+            next_j = current_j - 1;
+            break;
+
+    }
+
+    short first_j = current_j; //recording the first_j, first_i values for use in calculating S
+    short first_i = current_i;
+    short current_score = 0;
+    short last_score = 0;
+    char matrix = 'H'; //initialize with H
+
+    int counter = 0;
+    
+    //while(((current_i != next_i) || (current_j != next_j)) && (next_j != 0) && (next_i != 0))
+    while(((current_i != next_i) || (current_j != next_j)) && (next_j != 0) && (next_i != 0))
+    {
+
+        //if(myId==0 && myTId ==0) {
+            //for (int i = 0; i <= counter; i++){
+                //printf("%c",longCIGAR[i]);
+            //}
+            //printf("\n\n");
+        //}  
+        //if(myId==0 && myTId ==0) {
+            //printf("current_i:%d, current_j:%d, next_i:%d, next_j:%d, %c , %c\n",current_i, current_j, next_i, next_j, shorterSeq[current_j-1], longerSeq[current_i-1]);
+            //printf("score:%d, matrix:%c, gapOpen:%d\n",I_score[diagOffset[current_diagId] + current_locOffset],matrix, gapOpen);
+            //printf("H_ptr = %c, E_ptr = %c, F_ptr = %c", H_ptr[diagOffset[current_diagId]+ current_locOffset], E_ptr[diagOffset[current_diagId]+ current_locOffset], F_ptr[diagOffset[current_diagId]+ current_locOffset]);
+        //} 
+        //current_score = I_score[diagOffset[current_diagId] + current_locOffset];
+
+        //if(myId ==0 && myTId ==0) {
+                //printf("current_score = %d, last_score = %d, matrix = %c", current_score, last_score, matrix);
+        //}
+
+        if (next_i == current_i){
+            //printf("JUST ENTERED E, E_ptr = %d\n", E_ptr[diagOffset[current_diagId] + current_locOffset]);
+            if (E_ptr[diagOffset[current_diagId] + current_locOffset] == 'H') {
+                gapOpen = 1;
+            }
+            if (gapOpen == 0) 
+                matrix = 'E';
+            
+            
+            if(myId==0 && myTId ==0){
+                //printf("in E - gapOpen = %d, current matrix = %c, E_ptr = %d\n", gapOpen, matrix, E_ptr[diagOffset[current_diagId] + current_locOffset]);
+            }
+            // no match, no vertical movement, query has Insertion if que shorter and Deletion if ref is shorter       
+            longCIGAR[counter] = seqBShorter ? 'I' : 'D';
+            
+            if( longCIGAR[counter-1] == 'X' && last_i == current_i){
+                longCIGAR[counter-1] = seqBShorter ? 'I' : 'D'; //an aligned mismatch before an insertion or deletion is a part of the insertion or deletion
+                
+                //if(myId ==0 && myTId ==0) {
+                    //printf(" mismatch before Indel, change X to I or D \n");
+                //}
+            }     
+
+            if (shorterSeq[current_j-1] == longerSeq[current_i-1] && gapOpen == 1 && next_i == current_i -1) {
+                longCIGAR[counter] = '='; //if match at the end of an indel, = in CIGAR
+            }
+        } else if (next_j == current_j) {
+            if (F_ptr[diagOffset[current_diagId] + current_locOffset] == 'H') {
+                gapOpen = 1;
+            }
+            if (gapOpen == 0) 
+                matrix = 'F';
+
+
+            if(myId==0 && myTId ==0){
+                //printf("in F - gapOpen = %d, current matrix = %c, F_ptr = %d\n", gapOpen, matrix,F_ptr[diagOffset[current_diagId] + current_locOffset]);
+                
+            }
+            // no match, no horizontal movement, query has Deletion if que shorter and Deletion if ref is shorter
+           
+            longCIGAR[counter] = seqBShorter ? 'D' : 'I';
+
+            if( longCIGAR[counter-1] == 'X' && last_j == current_j){
+                longCIGAR[counter-1] = seqBShorter ? 'D' : 'I'; //an aligned mismatch before an insertion or deletion is a part of the insertion or deletion
+    
+                //if(myId ==0 && myTId ==0) {
+                    //printf(" mismatch before Indel, change X to I or D \n");
+                //}
+            } 
+            if (shorterSeq[current_j-1] == longerSeq[current_i-1] && gapOpen == 1 && next_j == current_j -1) {
+                longCIGAR[counter] = '=';
+            }
+
+        } else if ((next_i == current_i - 1) && (next_j == current_j - 1)  ){
+                matrix = 'H';
+                gapOpen = 0;
+                //if(myId==0 && myTId ==0){
+                    //printf("in H - gapOpen = %d, current matrix = %c\n", gapOpen, matrix);
+                //}
+        
+            
+            if (shorterSeq[current_j-1] == longerSeq[current_i-1]) {
+                longCIGAR[counter] = '=';
+                //if (myId ==0 && myTId ==0)
+                    //printf(" perfect match = \n");
+            } else {
+                //if (myId ==0 && myTId ==0)
+                    //printf(" aligned - but could be mismatch, or start if Insert or start of Delete \n"); 
+                longCIGAR[counter] = 'X';
+            }
+        }
+        last_i = current_i;
+        last_j = current_j;
+
+        current_i = next_i;
+        current_j = next_j;
+
+        last_diagId = current_diagId;
+        last_locOffset = current_locOffset;
+
+        current_diagId    = current_i + current_j;
+        current_locOffset = 0;
+
+        if(current_diagId < maxSize + 1)
+        {
+            current_locOffset = current_j;
+        } else {
+            unsigned short myOff2 = current_diagId - maxSize;
+            current_locOffset     = current_j - myOff2;
+        }
+
+        //if(myId==0 && myTId ==0){
+                    //printf("LAST ONE- gapOpen = %d, current matrix = %c\n", gapOpen, matrix);
+                //}
+
+        if (matrix == 'E'){
+            //printf("choosing next_i from E\n");
+            switch (E_ptr[diagOffset[current_diagId] + current_locOffset]){
+                case '-' :
+                    next_i = current_i;
+                    next_j = current_j - 1;
+                    break;
+                case 'H' :
+                    matrix = 'H';
+                    gapOpen = 1;
+                    next_i = current_i;
+                    next_j = current_j - 1;
+                    break;
+            }
+        } else if (matrix == 'F'){
+            //printf("choosing next_i from F\n");
+            switch (F_ptr[diagOffset[current_diagId] + current_locOffset]){
+                case '|' :
+                    next_i = current_i - 1;
+                    next_j = current_j;
+                    break;
+                case 'H' :
+                    matrix = 'H';
+                    gapOpen = 1;
+                    next_i = current_i - 1;
+                    next_j = current_j;
+                    break;
+            }
+        } else if (matrix == 'H') { 
+            //printf("choosing next_i from H\n");
+            //if (myId == 0 && myTId == 0){
+                //printf("matrix is H\n");
+            //}
+            switch (H_ptr[diagOffset[current_diagId] + current_locOffset]){
+                case '\\' :
+                    next_i = current_i - 1;
+                    next_j = current_j - 1;
+                    break;
+                case '|' :
+                    next_i = current_i - 1;
+                    next_j = current_j;
+                    break;
+                case '-' :
+                    next_i = current_i;
+                    next_j = current_j - 1;
+                    break;
+            }
+        } 
+
+
+        last_score = current_score;
+        counter++;   
+    }
+
+    if (shorterSeq[current_j-1] == longerSeq[current_i-1]){
+        longCIGAR[counter] = '=';
+    } else {
+        current_i=current_i+1;
+        current_j=current_j+1;
+    }
+    
+    if(lengthSeqA < lengthSeqB){
+        seqB_align_begin[myId] = current_i;
+        seqA_align_begin[myId] = current_j;
+    }else{
+        seqA_align_begin[myId] = current_i;
+        seqB_align_begin[myId] = current_j;
+    }
+
+    //createCIGAR(longCIGAR, CIGAR, maxCIGAR, seqA, seqB, lengthShorterSeq, lengthLongerSeq, seqBShorter, first_j, current_j, first_i, current_i);
+    
+    // *tick_out = tick;
+}
+
+
 __global__ void
 gpu_bsw::sequence_dna_kernel(char* seqA_array, char* seqB_array, unsigned* prefix_lengthA,
                     unsigned* prefix_lengthB, short* seqA_align_begin, short* seqA_align_end,
