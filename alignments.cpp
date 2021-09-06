@@ -1,6 +1,6 @@
 #include "alignments.hpp"
 #include"utils.hpp"
-gpu_alignments::gpu_alignments(int max_alignments, int maxCIGAR, int maxMatrixSize){
+gpu_alignments::gpu_alignments(int max_alignments, int maxCIGAR, unsigned const maxMatrixSize){
     cudaErrchk(cudaMalloc(&offset_query_gpu, (max_alignments) * sizeof(int)));
     cudaErrchk(cudaMalloc(&offset_ref_gpu, (max_alignments) * sizeof(int)));
     cudaErrchk(cudaMalloc(&ref_start_gpu, (max_alignments) * sizeof(short)));

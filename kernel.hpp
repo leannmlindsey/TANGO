@@ -34,24 +34,25 @@ __device__ __host__ short
             findMaxFour(short first, short second, short third, short fourth, int* ind);
 
 __device__ short
-intToCharPlusWrite(int num, char* CIGAR, short cigar_position)
+intToCharPlusWrite(int num, char* CIGAR, short cigar_position);
 
 __device__ void
 createCIGAR(char* longCIGAR, char* CIGAR, int maxCIGAR, 
-        const char* seqA, const char* seqB, unsigned lengthShorterSeq, unsigned lengthLo
+        const char* seqA, const char* seqB, unsigned lengthShorterSeq, unsigned lengthLongerSeq, 
+        bool seqBShorter, short first_j, short last_j, short first_i, short last_i); 
 
 __device__ void
 traceBack(short current_i, short current_j, char* seqA_array, char* seqB_array, unsigned* prefix_lengthA, 
                     unsigned* prefix_lengthB, short* seqA_align_begin, short* seqA_align_end,
-                    short* seqB_align_begin, short* seqB_align_end, int maxMatrixSize, int maxCIGAR,
-                    char* longCIGAR_array, char* CIGAR_array, char* H_ptr_array, char* E_ptr_array, char* F_ptr_array, unsigned int* diagOffset);
+                    short* seqB_align_begin, short* seqB_align_end, unsigned const maxMatrixSize, int maxCIGAR,
+                    char* longCIGAR, char* CIGAR, char* H_ptr, char* E_ptr, char* F_ptr, unsigned int* diagOffset);
 
 __global__ void
 sequence_dna_kernel(char* seqA_array, char* seqB_array, unsigned* prefix_lengthA,
                     unsigned* prefix_lengthB, short* seqA_align_begin, short* seqA_align_end,
                     short* seqB_align_begin, short* seqB_align_end, short* top_scores, 
                     char* longCIGAR_array, char* CIGAR_array, char* H_ptr_array, char* E_ptr_array, char* F_ptr_array, 
-                    int maxCIGAR, int maxMatrixSize,
+                    int maxCIGAR, unsigned const maxMatrixSize,
                     short matchScore, short misMatchScore, short startGap, short extendGap);
 
 __global__ void
@@ -59,7 +60,7 @@ sequence_dna_reverse(char* seqA_array, char* seqB_array, unsigned* prefix_length
                     unsigned* prefix_lengthB, short* seqA_align_begin, short* seqA_align_end,
                     short* seqB_align_begin, short* seqB_align_end, short* top_scores, 
                     char* longCIGAR_array, char* CIGAR_array, char* H_ptr_array, char* E_ptr_array, char* F_ptr_array, 
-                    int maxCIGAR, int maxMatrixSize,
+                    int maxCIGAR, unsigned const maxMatrixSize,
                     short matchScore, short misMatchScore, short startGap, short extendGap);
 
 __global__ void

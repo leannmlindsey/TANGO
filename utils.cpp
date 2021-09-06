@@ -55,7 +55,7 @@ unsigned half_length_B, unsigned totalLengthA, unsigned totalLengthB, int sequen
 
 }
 
-void asynch_mem_copies_dth_mid(gpu_alignments* gpu_data, short* alAend, short* alBend, int sequences_per_stream, int sequences_stream_leftover, cudaStream_t* streams_cuda){
+void asynch_mem_copies_dth_mid(gpu_alignments* gpu_data, short* alAend, short* alBend, int sequences_per_stream, int sequences_stream_leftover, cudaStream_t* streams_cuda, int maxCIGAR){
             cudaErrchk(cudaMemcpyAsync(alAend, gpu_data->ref_end_gpu, sequences_per_stream * sizeof(short),
                 cudaMemcpyDeviceToHost, streams_cuda[0]));
             cudaErrchk(cudaMemcpyAsync(alAend + sequences_per_stream, gpu_data->ref_end_gpu + sequences_per_stream, 
@@ -64,9 +64,11 @@ void asynch_mem_copies_dth_mid(gpu_alignments* gpu_data, short* alAend, short* a
             cudaErrchk(cudaMemcpyAsync(alBend, gpu_data->query_end_gpu, sequences_per_stream * sizeof(short), cudaMemcpyDeviceToHost, streams_cuda[0]));
             cudaErrchk(cudaMemcpyAsync(alBend + sequences_per_stream, gpu_data->query_end_gpu + sequences_per_stream, (sequences_per_stream + sequences_stream_leftover) * sizeof(short), 
                 cudaMemcpyDeviceToHost, streams_cuda[1]));
+
+            
 }
 
-void asynch_mem_copies_dth(gpu_alignments* gpu_data, short* alAbeg, short* alBbeg, short* top_scores_cpu, int sequences_per_stream, int sequences_stream_leftover, cudaStream_t* streams_cuda){
+void asynch_mem_copies_dth(gpu_alignments* gpu_data, short* alAbeg, short* alBbeg, short* top_scores_cpu, char* CIGAR_cpu, int sequences_per_stream, int sequences_stream_leftover, cudaStream_t* streams_cuda, int maxCIGAR){
            cudaErrchk(cudaMemcpyAsync(alAbeg, gpu_data->ref_start_gpu, sequences_per_stream * sizeof(short),
                                   cudaMemcpyDeviceToHost, streams_cuda[0]));
           cudaErrchk(cudaMemcpyAsync(alAbeg + sequences_per_stream, gpu_data->ref_start_gpu + sequences_per_stream, (sequences_per_stream + sequences_stream_leftover) * sizeof(short),
@@ -81,6 +83,11 @@ void asynch_mem_copies_dth(gpu_alignments* gpu_data, short* alAbeg, short* alBbe
                           cudaMemcpyDeviceToHost, streams_cuda[0]));
           cudaErrchk(cudaMemcpyAsync(top_scores_cpu + sequences_per_stream, gpu_data->scores_gpu + sequences_per_stream, 
           (sequences_per_stream + sequences_stream_leftover) * sizeof(short), cudaMemcpyDeviceToHost, streams_cuda[1]));
+
+          cudaErrchk(cudaMemcpyAsync(CIGAR_cpu, gpu_data->CIGAR_gpu, sequences_per_stream * sizeof(char) * maxCIGAR,
+                          cudaMemcpyDeviceToHost, streams_cuda[0]));
+          cudaErrchk(cudaMemcpyAsync(CIGAR_cpu + sequences_per_stream, gpu_data->CIGAR_gpu + sequences_per_stream, 
+          (sequences_per_stream + sequences_stream_leftover) * sizeof(char) * maxCIGAR, cudaMemcpyDeviceToHost, streams_cuda[1]));
 
 }
 
