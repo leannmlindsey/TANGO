@@ -613,8 +613,8 @@ gpu_bsw::sequence_dna_kernel(char* seqA_array, char* seqB_array, unsigned* prefi
     longCIGAR = longCIGAR_array + (block_Id * maxCIGAR);
     CIGAR = CIGAR_array + (block_Id * maxCIGAR);
     
-    if(thread_Id == 0 && block_Id == 100)
-      printf("DNA_ALIGNMENT_FUNCTION: longCIGAR_array = %p, +test = %p, maxCIGAR = %d, longCIGAR location for thread %d = %p\n", &longCIGAR_array, longCIGAR_array + (block_Id * maxCIGAR), maxCIGAR, block_Id, longCIGAR);
+    //if(thread_Id == 0 && block_Id == 100)
+      //printf("DNA_ALIGNMENT_FUNCTION: longCIGAR_array = %p, +test = %p, maxCIGAR = %d, longCIGAR location for thread %d = %p\n", &longCIGAR_array, longCIGAR_array + (block_Id * maxCIGAR), maxCIGAR, block_Id, longCIGAR);
 
 
     // what is the max length and what is the min length
@@ -857,13 +857,13 @@ gpu_bsw::sequence_dna_kernel(char* seqA_array, char* seqB_array, unsigned* prefi
         seqB_align_end[block_Id] = thread_max_j;
         top_scores[block_Id] = thread_max;
         }
-       if(thread_Id == 0 && block_Id == 100)
-          printf("RIGHT BEFORE TRACEBACK: longCIGAR_array = %p, +test = %p, maxCIGAR = %d, longCIGAR location for thread %d = %p\n", &longCIGAR_array, longCIGAR_array + (block_Id * maxCIGAR), maxCIGAR, block_Id, longCIGAR);
+       //if(thread_Id == 0 && block_Id == 100)
+          //printf("RIGHT BEFORE TRACEBACK: longCIGAR_array = %p, +test = %p, maxCIGAR = %d, longCIGAR location for thread %d = %p\n", &longCIGAR_array, longCIGAR_array + (block_Id * maxCIGAR), maxCIGAR, block_Id, longCIGAR);
 
-        //traceBack(current_i, current_j, seqA_array, seqB_array, prefix_lengthA, 
-                    //prefix_lengthB, seqA_align_begin, seqA_align_end,
-                    //seqB_align_begin, seqB_align_end, maxMatrixSize, maxCIGAR,
-                    //longCIGAR, CIGAR, H_ptr, E_ptr, F_ptr, diagOffset);
+        traceBack(current_i, current_j, seqA_array, seqB_array, prefix_lengthA, 
+                    prefix_lengthB, seqA_align_begin, seqA_align_end,
+                    seqB_align_begin, seqB_align_end, maxMatrixSize, maxCIGAR,
+                    longCIGAR, CIGAR, H_ptr, E_ptr, F_ptr, diagOffset);
     
     }
     
