@@ -209,7 +209,7 @@ void dnaSampleRun(string refFile, string queFile, string out_file){
   gpu_bsw_driver::alignment_results results_test;
 
 
-  short scores[] = {1, -3, -3, -1};
+  short scores[] = {3, -3, -6, -1};
   ofstream results_file(out_file);
 
   char *seq_cigar[maxCIGAR];

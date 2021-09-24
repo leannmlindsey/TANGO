@@ -186,7 +186,6 @@ gpu_bsw::blockShuffleReduce_with_index(short myVal, short& myIndex, short& myInd
 __device__ __host__ short
            gpu_bsw::findMaxFour(short first, short second, short third, short fourth, int* ind)
 {
-
     short traceback[4];
     traceback[0] = first;
     traceback[1] = second;
@@ -202,12 +201,6 @@ __device__ __host__ short
         *ind = i;
       }
     }
-    //maxScore = 0;
-
-    //maxScore = max(first, second);
-    //maxScore = max(maxScore, third);
-    //maxScore = max(maxScore, fourth);
-
 
     return maxScore;
 }
@@ -274,12 +267,12 @@ gpu_bsw::createCIGAR(char* longCIGAR, char* CIGAR, int maxCIGAR,
         cigar_position = intToCharPlusWrite(beg_S, CIGAR, cigar_position);
     }
     //if(myId==0 && myTId ==0) {
-            //printf("printing the CIGAR, cigar_position = %d, beg_S = %d\n", cigar_position,beg_S);
-            //for (int i = 0; i <= cigar_position; i++){
-                //printf("%c",CIGAR[i]);
-            //}
-         //printf("\n");
-       //}  
+      //      printf("printing the CIGAR, cigar_position = %d, beg_S = %d\n", cigar_position,beg_S);
+      //      for (int i = 0; i <= cigar_position; i++){
+      //          printf("%c",CIGAR[i]);
+      //      }
+      //   printf("\n");
+      // }  
 
     int q = 0;
 
@@ -318,7 +311,7 @@ gpu_bsw::createCIGAR(char* longCIGAR, char* CIGAR, int maxCIGAR,
     //if(myId==0 && myTId ==0) {
             //printf("in the CREATE CIGAR loop, printing the CIGAR, cigar_position = %d\n", cigar_position);
             //for (int i = 0; i <= cigar_position; i++){
-                //printf("%c",CIGAR[i]);
+              //  printf("%c",CIGAR[i]);
             //}
             //printf("cigar pointer = %p\n",&CIGAR);
     //}  
@@ -329,7 +322,7 @@ __device__ void
 gpu_bsw::traceBack(short current_i, short current_j, char* seqA_array, char* seqB_array, unsigned* prefix_lengthA, 
                     unsigned* prefix_lengthB, short* seqA_align_begin, short* seqA_align_end,
                     short* seqB_align_begin, short* seqB_align_end, unsigned const maxMatrixSize, int maxCIGAR,
-                    char* longCIGAR, char* CIGAR, char* H_ptr, char* E_ptr, char* F_ptr, unsigned int* diagOffset){
+                    char* longCIGAR, char* CIGAR, char* H_ptr, char* E_ptr, char* F_ptr, unsigned short* diagOffset){
 
     int myId = blockIdx.x;
     int myTId = threadIdx.x; 
@@ -563,11 +556,12 @@ gpu_bsw::traceBack(short current_i, short current_j, char* seqA_array, char* seq
 }
 
 
+
 __global__ void
 gpu_bsw::sequence_dna_kernel(char* seqA_array, char* seqB_array, unsigned* prefix_lengthA,
                     unsigned* prefix_lengthB, short* seqA_align_begin, short* seqA_align_end,
-                    short* seqB_align_begin, short* seqB_align_end, short* top_scores, char* longCIGAR_array, 
-                    char* CIGAR_array, char* H_ptr_array, char* E_ptr_array, char* F_ptr_array, 
+                    short* seqB_align_begin, short* seqB_align_end, short* top_scores, 
+                    char* longCIGAR_array, char* CIGAR_array, char* H_ptr_array, char* E_ptr_array, char* F_ptr_array, 
                     int maxCIGAR, unsigned const maxMatrixSize, short matchScore, short misMatchScore, short startGap, short extendGap)
 {
     int block_Id  = blockIdx.x;
@@ -583,12 +577,9 @@ gpu_bsw::sequence_dna_kernel(char* seqA_array, char* seqB_array, unsigned* prefi
 
     char* H_ptr, *E_ptr, *F_ptr;
     char* CIGAR, *longCIGAR;
-    
-    extern __shared__ char is_valid_array[]; //declaring a shared array in memory but not allocating size.
-    char*                  is_valid = &is_valid_array[0]; //reference to position 0 in the array
-    char* longer_seq;
-    extern __shared__ unsigned int diagOffset[];
-   
+
+    extern __shared__ char is_valid_array[];
+    char*                  is_valid = &is_valid_array[0];
 
 // setting up block local sequences and their lengths.
     if(block_Id == 0)
@@ -606,23 +597,20 @@ gpu_bsw::sequence_dna_kernel(char* seqA_array, char* seqB_array, unsigned* prefi
         seqB       = seqB_array + prefix_lengthB[block_Id - 1];
     }
 
+    // what is the max length and what is the min length
+    unsigned maxSize = lengthSeqA > lengthSeqB ? lengthSeqA : lengthSeqB;
+    unsigned minSize = lengthSeqA < lengthSeqB ? lengthSeqA : lengthSeqB;
+
     H_ptr = H_ptr_array + (block_Id * maxMatrixSize);
     E_ptr = E_ptr_array + (block_Id * maxMatrixSize);
     F_ptr = F_ptr_array + (block_Id * maxMatrixSize);
 
     longCIGAR = longCIGAR_array + (block_Id * maxCIGAR);
     CIGAR = CIGAR_array + (block_Id * maxCIGAR);
-    
-    //if(thread_Id == 0 && block_Id == 100)
-      //printf("DNA_ALIGNMENT_FUNCTION: longCIGAR_array = %p, +test = %p, maxCIGAR = %d, longCIGAR location for thread %d = %p\n", &longCIGAR_array, longCIGAR_array + (block_Id * maxCIGAR), maxCIGAR, block_Id, longCIGAR);
 
+    char* longer_seq;
+    unsigned short* diagOffset = (unsigned short*) (&is_valid_array[3 * (minSize + 1) * sizeof(short)]);
 
-    // what is the max length and what is the min length
-    unsigned maxSize = lengthSeqA > lengthSeqB ? lengthSeqA : lengthSeqB;
-    unsigned minSize = lengthSeqA < lengthSeqB ? lengthSeqA : lengthSeqB;
-    unsigned totBytes = 0;
-    totBytes += ((minSize + 1) + (minSize + 1) + (minSize + 1)) * sizeof(short);
-    char*                  myLocString = &is_valid_array[3 * (minSize + 1) * sizeof(short) ];
 
 // shared memory space for storing longer of the two strings
 
@@ -631,7 +619,7 @@ gpu_bsw::sequence_dna_kernel(char* seqA_array, char* seqB_array, unsigned* prefi
     memset(is_valid, 1, minSize);
     is_valid += minSize;
     memset(is_valid, 0, minSize);
-    
+
     char myColumnChar;
     // the shorter of the two strings is stored in thread registers
     if(lengthSeqA < lengthSeqB)
@@ -656,35 +644,18 @@ gpu_bsw::sequence_dna_kernel(char* seqA_array, char* seqB_array, unsigned* prefi
     short thread_max_j = 0;// to maintain the DP cooirdinate j for the shorter string
     int ind;
 
-  //initializing registers for storing diagonal values for three recent most diagonals (separate tables for
-  //H, E and F)
-    short _curr_H = 0, _curr_F = 0, _curr_E = 0;
-    short _prev_H = 0, _prev_F = 0, _prev_E = 0;
-    short _prev_prev_H = 0, _prev_prev_F = 0, _prev_prev_E = 0;
-    short _temp_Val = 0;
-
-   __shared__ short sh_prev_E[32]; // one such element is required per warp
-   __shared__ short sh_prev_H[32];
-   __shared__ short sh_prev_prev_H[32];
-
-   __shared__ short local_spill_prev_E[1024];// each threads local spill,
-   __shared__ short local_spill_prev_H[1024];
-   __shared__ short local_spill_prev_prev_H[1024];
-
-   unsigned      alignmentPad = 4 + (4 - totBytes % 4);
-   
-
-
-    __syncthreads(); // to make sure all shmem allocations have been initialized
-
+    if(thread_Id == 0 && block_Id == 0)
+      printf("lengthSeqA = %d, lengthSeqB = %d, minSize = %d, maxSize = %d\n", lengthSeqA, lengthSeqB, minSize, maxSize);
     //set up the prefixSum for diagonal offset look up table for H_ptr, E_ptr, F_ptr
     int    locSum = 0;
+     
     for(int diag = 0; diag < lengthSeqA + lengthSeqB - 1; diag++) 
     {
+        
         int locDiagId = diag + 1;
         if(thread_Id == 0)
         {
-           
+            
             if(locDiagId <= minSize + 1)
             {
                 locSum += locDiagId;
@@ -702,12 +673,32 @@ gpu_bsw::sequence_dna_kernel(char* seqA_array, char* seqB_array, unsigned* prefi
             }
             diagOffset[lengthSeqA + lengthSeqB] = locSum + 2; //what is this for?
             
-            //if (thread_Id == 0 && block_Id == 1)
-              //printf("diag:%d\tlocSum:%d\tlocDiagId:%d\tdiagOffset[locDiagId]:%d\n",diag,locSum, locDiagId, diagOffset[locDiagId]); 
         }
     }
+    
     __syncthreads(); //to make sure prefixSum is calculated before the threads start calculations.    
 
+
+  //initializing registers for storing diagonal values for three recent most diagonals (separate tables for
+  //H, E and F)
+    short _curr_H = 0, _curr_F = 0, _curr_E = 0;
+    short _prev_H = 0, _prev_F = 0, _prev_E = 0;
+    short _prev_prev_H = 0, _prev_prev_F = 0, _prev_prev_E = 0;
+    short _temp_Val = 0;
+
+   __shared__ short sh_prev_E[32]; // one such element is required per warp
+   __shared__ short sh_prev_H[32];
+   __shared__ short sh_prev_prev_H[32];
+
+   __shared__ short local_spill_prev_E[1024];// each threads local spill,
+   __shared__ short local_spill_prev_H[1024];
+   __shared__ short local_spill_prev_prev_H[1024];
+
+    //unsigned      alignmentPad = 4 + (4 - totBytes % 4);
+
+    __syncthreads(); // to make sure all shmem allocations have been initialized
+
+    
     for(int diag = 0; diag < lengthSeqA + lengthSeqB - 1; diag++)
     {  // iterate for the number of anti-diagonals
 
@@ -786,22 +777,23 @@ gpu_bsw::sequence_dna_kernel(char* seqA_array, char* seqB_array, unsigned* prefi
               heVal = 0;
            }
       		_curr_F = (fVal > hfVal) ? fVal : hfVal;
-          
+          F_ptr[maxMatrixSize+10] = '|';
+          E_ptr[maxMatrixSize+10] = '-';
+          H_ptr[maxMatrixSize+10] = '*';
           if (fVal > hfVal){
                 F_ptr[diagOffset[diagId] + locOffset] = '|';
-            } else {
+          } else {
                 F_ptr[diagOffset[diagId] + locOffset] = 'H';
           }
 
-          //if (j!=0){
-            _curr_E = (eVal > heVal) ? eVal : heVal; // if j==0, we don't want a comparison with heVal to wipe out initialization of column 0
+      		_curr_E = (eVal > heVal) ? eVal : heVal;
+          if (j!=0){
             if (eVal > heVal) {
               E_ptr[diagOffset[diagId] + locOffset] = '-';
             } else {
               E_ptr[diagOffset[diagId] + locOffset] = 'H';
             }
-          //}
-
+          }
           short testShufll = __shfl_sync(mask, _prev_prev_H, laneId - 1, 32);
           short final_prev_prev_H = 0;
           if(diag >= maxSize)
@@ -816,7 +808,6 @@ gpu_bsw::sequence_dna_kernel(char* seqA_array, char* seqB_array, unsigned* prefi
           if(warpId == 0 && laneId == 0) final_prev_prev_H = 0;
           short diag_score = final_prev_prev_H + ((longer_seq[i - 1] == myColumnChar) ? matchScore : misMatchScore);
           _curr_H = findMaxFour(diag_score, _curr_F, _curr_E, 0, &ind);
-
           if (ind == 0) {
                 H_ptr[diagOffset[diagId] + locOffset] = '\\';
             } else if (ind == 1) {
@@ -830,6 +821,8 @@ gpu_bsw::sequence_dna_kernel(char* seqA_array, char* seqB_array, unsigned* prefi
           thread_max_i = (thread_max >= _curr_H) ? thread_max_i : i;
           thread_max_j = (thread_max >= _curr_H) ? thread_max_j : thread_Id + 1;
           thread_max   = (thread_max >= _curr_H) ? thread_max : _curr_H;
+          //if (block_Id == 0)
+            //printf("i = %d, j = %d, _curr_H = %d, thread_max_i = %d, thread_max_j = %d, thread_max = %d\n",i, thread_Id, _curr_H, thread_max_i, thread_max_j, thread_max);
           i++;
        }
       __syncthreads(); // why do I need this? commenting it out breaks it
@@ -838,15 +831,13 @@ gpu_bsw::sequence_dna_kernel(char* seqA_array, char* seqB_array, unsigned* prefi
 
     thread_max = blockShuffleReduce_with_index(thread_max, thread_max_i, thread_max_j, minSize);  // thread 0 will have the correct values
 
-    
     if(thread_Id == 0)
     {
         short current_i = thread_max_i;
         short current_j = thread_max_j;
-      
+
         if(lengthSeqA < lengthSeqB)
         {
-          
           seqB_align_end[block_Id] = thread_max_i;
           seqA_align_end[block_Id] = thread_max_j;
           top_scores[block_Id] = thread_max;
@@ -857,28 +848,22 @@ gpu_bsw::sequence_dna_kernel(char* seqA_array, char* seqB_array, unsigned* prefi
         seqB_align_end[block_Id] = thread_max_j;
         top_scores[block_Id] = thread_max;
         }
-       //if(thread_Id == 0 && block_Id == 100)
-          //printf("RIGHT BEFORE TRACEBACK: longCIGAR_array = %p, +test = %p, maxCIGAR = %d, longCIGAR location for thread %d = %p\n", &longCIGAR_array, longCIGAR_array + (block_Id * maxCIGAR), maxCIGAR, block_Id, longCIGAR);
 
         traceBack(current_i, current_j, seqA_array, seqB_array, prefix_lengthA, 
                     prefix_lengthB, seqA_align_begin, seqA_align_end,
                     seqB_align_begin, seqB_align_end, maxMatrixSize, maxCIGAR,
                     longCIGAR, CIGAR, H_ptr, E_ptr, F_ptr, diagOffset);
-    
-    }
-    
-    __syncthreads();
 
-    
-    
+    }
+    __syncthreads();
 }
 
 
 __global__ void
 gpu_bsw::sequence_dna_reverse(char* seqA_array, char* seqB_array, unsigned* prefix_lengthA,
                     unsigned* prefix_lengthB, short* seqA_align_begin, short* seqA_align_end,
-                    short* seqB_align_begin, short* seqB_align_end, short* top_scores, char* longCIGAR_array, 
-                    char* CIGAR_array, char* H_ptr_array, char* E_ptr_array, char* F_ptr_array, 
+                    short* seqB_align_begin, short* seqB_align_end, short* top_scores, 
+                    char* longCIGAR_array, char* CIGAR_array, char* H_ptr_array, char* E_ptr_array, char* F_ptr_array, 
                     int maxCIGAR, unsigned const maxMatrixSize, short matchScore, short misMatchScore, short startGap, short extendGap){
 
       int block_Id  = blockIdx.x;
