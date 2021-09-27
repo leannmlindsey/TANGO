@@ -319,11 +319,11 @@ gpu_bsw::createCIGAR(char* longCIGAR, char* CIGAR, int maxCIGAR,
 }
 
 __device__ void
-gpu_bsw::traceBack(short current_i, short current_j, char* seqA_array, char* seqB_array, unsigned* prefix_lengthA, 
+traceBack(short current_i, short current_j, char* seqA_array, char* seqB_array, unsigned* prefix_lengthA, 
                     unsigned* prefix_lengthB, short* seqA_align_begin, short* seqA_align_end,
                     short* seqB_align_begin, short* seqB_align_end, unsigned const maxMatrixSize, int maxCIGAR,
-                    char* longCIGAR, char* CIGAR, char* H_ptr, char* E_ptr, char* F_ptr, unsigned short* diagOffset){
-
+                    char* longCIGAR, char* CIGAR, char* H_ptr, char* E_ptr, char* F_ptr, unsigned int* diagOffset)
+{                    
     int myId = blockIdx.x;
     int myTId = threadIdx.x; 
 
@@ -849,10 +849,10 @@ gpu_bsw::sequence_dna_kernel(char* seqA_array, char* seqB_array, unsigned* prefi
         top_scores[block_Id] = thread_max;
         }
 
-        traceBack(current_i, current_j, seqA_array, seqB_array, prefix_lengthA, 
-                    prefix_lengthB, seqA_align_begin, seqA_align_end,
-                    seqB_align_begin, seqB_align_end, maxMatrixSize, maxCIGAR,
-                    longCIGAR, CIGAR, H_ptr, E_ptr, F_ptr, diagOffset);
+        //traceBack(current_i, current_j, seqA_array, seqB_array, prefix_lengthA, 
+          //          prefix_lengthB, seqA_align_begin, seqA_align_end,
+          //          seqB_align_begin, seqB_align_end, maxMatrixSize, maxCIGAR,
+          //          longCIGAR, CIGAR, H_ptr, E_ptr, F_ptr, diagOffset);
 
     }
     __syncthreads();
