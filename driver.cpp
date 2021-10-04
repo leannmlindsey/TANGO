@@ -16,6 +16,7 @@ void
 gpu_bsw_driver::kernel_driver_dna(std::vector<std::string> reads, std::vector<std::string> contigs, gpu_bsw_driver::alignment_results *alignments, int maxCIGAR, short scores[4], float factor)
 {
     short matchScore = scores[0], misMatchScore = scores[1], startGap = scores[2], extendGap = scores[3];
+    printf("matchScore = %d, misMatchScore = %d, startGap = %d, extendGap = %d\n", matchScore, misMatchScore, startGap, extendGap);
     unsigned maxContigSize = getMaxLength(contigs);
     unsigned maxReadSize = getMaxLength(reads);
     unsigned const maxMatrixSize = (maxContigSize + 1 ) * (maxReadSize + 1);
