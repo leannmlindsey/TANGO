@@ -750,13 +750,13 @@ gpu_bsw::sequence_dna_kernel(char* seqA_array, char* seqB_array, unsigned* prefi
         _prev_E = _curr_E;
         _curr_E = _prev_prev_E;
         _prev_prev_E = _temp_Val;
-        _curr_E = 0;
+        _curr_E = -100;
 
         _temp_Val = _prev_F;
         _prev_F = _curr_F;
         _curr_F = _prev_prev_F;
         _prev_prev_F = _temp_Val;
-        _curr_F = 0;
+        _curr_F = -100;
 
 
         if(laneId == 31)
