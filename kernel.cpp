@@ -380,6 +380,7 @@ gpu_bsw::traceBack(short current_i, short current_j, char* seqA_array, char* seq
     short last_i = 0;
     short last_j = 0;
 
+    printf("the first pointer is: %c\n",H_ptr[diagOffset[current_diagId] + current_locOffset]);
     switch (H_ptr[diagOffset[current_diagId] + current_locOffset]){
         case '\\' :
             next_i = current_i - 1;
@@ -406,15 +407,15 @@ gpu_bsw::traceBack(short current_i, short current_j, char* seqA_array, char* seq
    
     while(((current_i != next_i) || (current_j != next_j)) && (next_j != 0) && (next_i != 0))
     {
-       //if(myId==0 && myTId ==0) {
-            //for (int i = 0; i <= counter; i++){
-                //printf("%c",longCIGAR[i]);
-            //}
-            //printf("\n\n");
-        //ß}  
-        //if(myId==0 && myTId ==0) {
-            //printf("current_i:%d, current_j:%d, next_i:%d, next_j:%d, %c , %c\n",current_i, current_j, next_i, next_j, shorterSeq[current_j-1], longerSeq[current_i-1]);
-        //} 
+       if(myId==0 && myTId ==0) {
+            for (int i = 0; i <= counter; i++){
+                printf("%c",longCIGAR[i]);
+            }
+            printf("\n\n");
+        }  
+        if(myId==0 && myTId ==0) {
+            printf("current_i:%d, current_j:%d, next_i:%d, next_j:%d, %c , %c\n",current_i, current_j, next_i, next_j, shorterSeq[current_j-1], longerSeq[current_i-1]);
+        } 
       
         if (next_i == current_i){
             //printf("JUST ENTERED E, E_ptr = %d\n", E_ptr[diagOffset[current_diagId] + current_locOffset]);
@@ -505,6 +506,8 @@ gpu_bsw::traceBack(short current_i, short current_j, char* seqA_array, char* seq
         }
 
         if (matrix == 'E'){
+            printf("the matrix is E & ");
+            printf("the next pointer is: %c\n",E_ptr[diagOffset[current_diagId] + current_locOffset]);
             switch (E_ptr[diagOffset[current_diagId] + current_locOffset]){
                 case '-' :
                     next_i = current_i;
@@ -518,6 +521,8 @@ gpu_bsw::traceBack(short current_i, short current_j, char* seqA_array, char* seq
                     break;
             }
         } else if (matrix == 'F'){
+            printf("the matrix is F & ");
+            printf("the next pointer is: %c\n",F_ptr[diagOffset[current_diagId] + current_locOffset]);
             switch (F_ptr[diagOffset[current_diagId] + current_locOffset]){
                 case '|' :
                     next_i = current_i - 1;
@@ -531,6 +536,8 @@ gpu_bsw::traceBack(short current_i, short current_j, char* seqA_array, char* seq
                     break;
             }
         } else if (matrix == 'H') { 
+            printf("the matrix is H & ");
+            printf("the next pointer is: %c\n",H_ptr[diagOffset[current_diagId] + current_locOffset]);
             switch (H_ptr[diagOffset[current_diagId] + current_locOffset]){
                 case '\\' :
                     next_i = current_i - 1;
@@ -871,39 +878,39 @@ gpu_bsw::sequence_dna_kernel(char* seqA_array, char* seqB_array, unsigned* prefi
         sideSeqLength = lengthSeqA;
     }
     
-    if (block_Id == 0 && thread_Id == 0 ){
-                printf("FULL SCORING MATRIX\n");
-                int S_current_diagId    = 0;
-                int S_current_locOffset = 0;
-                printf("-\t-\t");
-                for (int sj = 0; sj < topSeqLength; sj++){
-                    printf("%c\t", topSeq[sj]); //query sequence printed across the top 
-                }
-                printf("\n");
-                for (int si = 0; si < sideSeqLength + 1; si++){
-                    if (si == 0){
-                        printf("-\t");
-                    } else {
-                        printf("%c\t", sideSeq[si-1]); //reference sequence printed down the side 
-                    }
-                    for (int sj =0; sj < topSeqLength + 1; sj++){
+    //if (block_Id == 0 && thread_Id == 0 ){
+      //          printf("FULL SCORING MATRIX\n");
+        //        int S_current_diagId    = 0;
+          //      int S_current_locOffset = 0;
+            //    printf("-\t-\t");
+              //  for (int sj = 0; sj < topSeqLength; sj++){
+                //    printf("%c\t", topSeq[sj]); //query sequence printed across the top 
+                //}
+                //printf("\n");
+                //for (int si = 0; si < sideSeqLength + 1; si++){
+                  //  if (si == 0){
+                    //    printf("-\t");
+                    //} else {
+                      //  printf("%c\t", sideSeq[si-1]); //reference sequence printed down the side 
+                    //}
+                    //for (int sj =0; sj < topSeqLength + 1; sj++){
                        
-                        S_current_diagId = si + sj;
+                      //  S_current_diagId = si + sj;
 
-                        if(S_current_diagId < maxSize + 1){
-                            S_current_locOffset = sj;
-                        } else {
-                            unsigned short S_myOff = S_current_diagId - maxSize;
-                            S_current_locOffset = sj - S_myOff;
-                        }
+                      //  if(S_current_diagId < maxSize + 1){
+                            //S_current_locOffset = sj;
+                        //} else {
+                            //unsigned short S_myOff = S_current_diagId - maxSize;
+                            //S_current_locOffset = sj - S_myOff;
+                        //}
                         //printf("%d\t",I_score[diagOffset[S_current_diagId] + S_current_locOffset]);
-                        printf("%c\t",H_ptr[diagOffset[S_current_diagId] + S_current_locOffset]);
-                    }
-                    printf("\n");
+                        //printf("%c\t",H_ptr[diagOffset[S_current_diagId] + S_current_locOffset]);
+                   // }
+                    //printf("\n");
                   
-                }
+                //}
             
-    }
+    //}
     if(thread_Id == 0)
     {
         short current_i = thread_max_i;
