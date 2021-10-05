@@ -266,13 +266,13 @@ gpu_bsw::createCIGAR(char* longCIGAR, char* CIGAR, int maxCIGAR,
         cigar_position++ ; 
         cigar_position = intToCharPlusWrite(beg_S, CIGAR, cigar_position);
     }
-    //if(myId==0 && myTId ==0) {
-      //      printf("printing the CIGAR, cigar_position = %d, beg_S = %d\n", cigar_position,beg_S);
-      //      for (int i = 0; i <= cigar_position; i++){
-      //          printf("%c",CIGAR[i]);
-      //      }
-      //   printf("\n");
-      // }  
+    if(myId==0 && myTId ==0) {
+            printf("printing the CIGAR, cigar_position = %d, beg_S = %d\n", cigar_position,beg_S);
+            for (int i = 0; i <= cigar_position; i++){
+                printf("%c",CIGAR[i]);
+            }
+         printf("\n");
+       }  
 
     int q = 0;
 
@@ -308,13 +308,13 @@ gpu_bsw::createCIGAR(char* longCIGAR, char* CIGAR, int maxCIGAR,
         CIGAR[cigar_position-i] = temp; 
     }
 
-    //if(myId==0 && myTId ==0) {
-            //printf("in the CREATE CIGAR loop, printing the CIGAR, cigar_position = %d\n", cigar_position);
-            //for (int i = 0; i <= cigar_position; i++){
-              //  printf("%c",CIGAR[i]);
-            //}
-            //printf("cigar pointer = %p\n",&CIGAR);
-    //}  
+    if(myId==0 && myTId ==0) {
+            printf("in the CREATE CIGAR loop, printing the CIGAR, cigar_position = %d\n", cigar_position);
+            for (int i = 0; i <= cigar_position; i++){
+                printf("%c",CIGAR[i]);
+            }
+            printf("cigar pointer = %p\n",&CIGAR);
+    }  
 
 }
 
@@ -374,6 +374,12 @@ gpu_bsw::traceBack(short current_i, short current_j, char* seqA_array, char* seq
         unsigned short myOff = current_diagId - maxSize;
         current_locOffset    = current_j - myOff;
     }
+
+    if(myId == 0 && myTId ==0){
+        printf("Beginning Traceback\n");
+        printf("diagID:%d locoffset:%d current_i:%d, current_j:%d\n\n",current_diagId, current_locOffset, current_i, current_j);
+
+    }
     
     short next_i;
     short next_j;
@@ -381,6 +387,7 @@ gpu_bsw::traceBack(short current_i, short current_j, char* seqA_array, char* seq
     short last_j = 0;
 
     printf("the first pointer is: %c\n",H_ptr[diagOffset[current_diagId] + current_locOffset]);
+    
     switch (H_ptr[diagOffset[current_diagId] + current_locOffset]){
         case '\\' :
             next_i = current_i - 1;
@@ -414,7 +421,7 @@ gpu_bsw::traceBack(short current_i, short current_j, char* seqA_array, char* seq
             printf("\n\n");
         }  
         if(myId==0 && myTId ==0) {
-            printf("current_i:%d, current_j:%d, next_i:%d, next_j:%d, %c , %c\n",current_i, current_j, next_i, next_j, shorterSeq[current_j-1], longerSeq[current_i-1]);
+            printf("current_i:%d, current_j:%d, next_i:%d, next_j:%d, %c , %c\n",current_i, current_j, next_i, next_j, shorterSeq[current_j], longerSeq[current_i-1]);
         } 
       
         if (next_i == current_i){
@@ -434,13 +441,13 @@ gpu_bsw::traceBack(short current_i, short current_j, char* seqA_array, char* seq
             if( longCIGAR[counter-1] == 'X' && last_i == current_i){
                 longCIGAR[counter-1] = seqBShorter ? 'I' : 'D'; //an aligned mismatch before an insertion or deletion is a part of the insertion or deletion
             
-                //if(myId ==0 && myTId ==0) {
-                    //printf(" mismatch before Indel, change X to I or D \n");
-                //}
+                if(myId ==0 && myTId ==0) {
+                    printf(" mismatch before Indel, change X to I or D \n");
+                }
             }     
 
 
-            if (shorterSeq[current_j-1] == longerSeq[current_i-1] && gapOpen == 1 && next_i == current_i -1) {
+            if (shorterSeq[current_j] == longerSeq[current_i-1] && gapOpen == 1 && next_i == current_i -1) {
                 longCIGAR[counter] = '='; //if match at the end of an indel, = in CIGAR
             }
         } else if (next_j == current_j) {
@@ -460,11 +467,11 @@ gpu_bsw::traceBack(short current_i, short current_j, char* seqA_array, char* seq
             if( longCIGAR[counter-1] == 'X' && last_j == current_j){
                 longCIGAR[counter-1] = seqBShorter ? 'D' : 'I'; //an aligned mismatch before an insertion or deletion is a part of the insertion or deletion
             
-                //if(myId ==0 && myTId ==0) {
-                    //printf(" mismatch before Indel, change X to I or D \n");
-                //}
+                if(myId ==0 && myTId ==0) {
+                    printf(" mismatch before Indel, change X to I or D \n");
+                }
             } 
-            if (shorterSeq[current_j-1] == longerSeq[current_i-1] && gapOpen == 1 && next_j == current_j -1) {
+            if (shorterSeq[current_j] == longerSeq[current_i-1] && gapOpen == 1 && next_j == current_j -1) {
                 longCIGAR[counter] = '=';
             }
 
@@ -475,14 +482,14 @@ gpu_bsw::traceBack(short current_i, short current_j, char* seqA_array, char* seq
                     //printf("in H - gapOpen = %d, current matrix = %c\n", gapOpen, matrix);
                 //}
             
-            if (shorterSeq[current_j-1] == longerSeq[current_i-1]) {
+            if (shorterSeq[current_j] == longerSeq[current_i-1]) {
                 longCIGAR[counter] = '=';
-                //if (myId ==0 && myTId ==0)
-                    //printf(" perfect match = \n");
+                if (myId ==0 && myTId ==0)
+                    printf(" perfect match = \n");
             } else { 
                 longCIGAR[counter] = 'X';
-                //if (myId ==0 && myTId ==0)
-                    //printf(" aligned - but could be mismatch, or start if Insert or start of Delete \n"); 
+                if (myId ==0 && myTId ==0)
+                    printf(" aligned - but could be mismatch, or start if Insert or start of Delete \n"); 
             }
         }
         last_i = current_i;
@@ -559,7 +566,7 @@ gpu_bsw::traceBack(short current_i, short current_j, char* seqA_array, char* seq
         counter++;   
     }
 
-    if (shorterSeq[current_j-1] == longerSeq[current_i-1]){
+    if (shorterSeq[current_j] == longerSeq[current_i-1]){
         longCIGAR[counter] = '=';
     } else {
         current_i=current_i+1;
@@ -661,7 +668,7 @@ gpu_bsw::sequence_dna_kernel(char* seqA_array, char* seqB_array, unsigned* prefi
     else
     {
       if(thread_Id < lengthSeqB)
-        myColumnChar = seqB[thread_Id];
+        myColumnChar = seqB[thread_Id ];
       longer_seq = seqA;
     }
 
@@ -733,6 +740,7 @@ gpu_bsw::sequence_dna_kernel(char* seqA_array, char* seqB_array, unsigned* prefi
     for(int diag = 0; diag < lengthSeqA + lengthSeqB - 1; diag++)
     {  // iterate for the number of anti-diagonals
 
+        
         unsigned short diagId    = i + j;
         unsigned short locOffset = 0;
         if(diagId < maxSize + 1) 
@@ -743,6 +751,10 @@ gpu_bsw::sequence_dna_kernel(char* seqA_array, char* seqB_array, unsigned* prefi
         {
           unsigned short myOff = diagId - maxSize;
           locOffset            = j - myOff;
+        }
+
+        if (thread_Id == 0 && block_Id == 0) {
+          printf("i = %d, j = %d, diagId = %d, locOffset = %d\n", i, j, diagId, locOffset);
         }
 
         is_valid = is_valid - (diag < minSize || diag >= maxSize); //move the pointer to left by 1 if cnd true
