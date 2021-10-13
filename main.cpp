@@ -215,13 +215,10 @@ void dnaSampleRun(string refFile, string queFile, string out_file){
   char *seq_cigar[maxCIGAR];
 
   gpu_bsw_driver::kernel_driver_dna(G_sequencesB, G_sequencesA, &results_test, maxCIGAR, scores, 0.5);
-  char *test[maxCIGAR];
-  *test = &results_test.CIGAR[0];
-  std::cout << *test << std::endl;
   for(int k = 0; k < G_sequencesA.size(); k++){
         *seq_cigar = &results_test.CIGAR[k*maxCIGAR];
-        //std::cout << *seq_cigar << std::endl; 
-        results_file<<results_test.top_scores[k]<<"\t"
+        results_file<<"index = " << k << "\t"
+                <<results_test.top_scores[k]<<"\t"
                 <<results_test.ref_begin[k]<<"\t"
                 <<results_test.ref_end[k] - 1<<"\t"
                 <<results_test.query_begin[k]<<"\t"

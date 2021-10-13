@@ -12,7 +12,7 @@ gpu_alignments::gpu_alignments(int max_alignments, int maxCIGAR, unsigned const 
     cudaErrchk(cudaMalloc(&H_ptr_gpu, sizeof(char)*maxMatrixSize * (max_alignments)));
     cudaErrchk(cudaMalloc(&E_ptr_gpu, sizeof(char)*maxMatrixSize * (max_alignments)));
     cudaErrchk(cudaMalloc(&F_ptr_gpu, sizeof(char)*maxMatrixSize * (max_alignments)));
-    cudaErrchk(cudaMalloc(&longCIGAR_gpu, sizeof(char)*maxMatrixSize * (max_alignments)));
+    cudaErrchk(cudaMalloc(&longCIGAR_gpu, sizeof(char)*maxCIGAR * (max_alignments)));
 }
 
 gpu_alignments::~gpu_alignments(){

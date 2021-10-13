@@ -86,7 +86,7 @@ void asynch_mem_copies_dth(gpu_alignments* gpu_data, short* alAbeg, short* alBbe
 
           cudaErrchk(cudaMemcpyAsync(CIGAR_cpu, gpu_data->CIGAR_gpu, sequences_per_stream * sizeof(char) * maxCIGAR,
                           cudaMemcpyDeviceToHost, streams_cuda[0]));
-          cudaErrchk(cudaMemcpyAsync(CIGAR_cpu + sequences_per_stream, gpu_data->CIGAR_gpu + sequences_per_stream, 
+          cudaErrchk(cudaMemcpyAsync(CIGAR_cpu + sequences_per_stream * maxCIGAR, gpu_data->CIGAR_gpu + sequences_per_stream * maxCIGAR, 
           (sequences_per_stream + sequences_stream_leftover) * sizeof(char) * maxCIGAR, cudaMemcpyDeviceToHost, streams_cuda[1]));
 
 }
