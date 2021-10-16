@@ -923,8 +923,8 @@ gpu_bsw::sequence_dna_kernel(char* seqA_array, char* seqB_array, unsigned* prefi
         sideSeqLength = lengthSeqA;
     }
    
-    if (false){ 
-    //if (block_Id == 1 && thread_Id == 0 ){
+    //if (false){ 
+    if (block_Id == 1 && thread_Id == 0 ){
                 printf("FULL SCORING MATRIX\n");
                 int S_current_diagId    = 0;
                 int S_current_locOffset = 0;
@@ -951,7 +951,7 @@ gpu_bsw::sequence_dna_kernel(char* seqA_array, char* seqB_array, unsigned* prefi
                             S_current_locOffset = sj - S_myOff;
                         }
                         //printf("%d\t",I_score[diagOffset[S_current_diagId] + S_current_locOffset]);
-                        //printf("%c\t",H_ptr[diagOffset[S_current_diagId] + S_current_locOffset]);
+                        printf("%c\t",H_ptr[diagOffset[S_current_diagId] + S_current_locOffset]);
                     }
                     printf("\n");
                   
