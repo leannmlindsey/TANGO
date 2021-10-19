@@ -235,7 +235,7 @@ gpu_bsw::createCIGAR(char* longCIGAR, char* CIGAR, int maxCIGAR,
         bool seqBShorter, short first_j, short last_j, short first_i, short last_i) 
 {
   
-    //printf("first_j = %d, last_j = %d, first_i = %d, last_i = %d\n", first_j, last_j, first_i, last_i);
+    printf("first_j = %d, last_j = %d, first_i = %d, last_i = %d\n", first_j, last_j, first_i, last_i);
     int myId  = blockIdx.x;
     int myTId = threadIdx.x;
     short cigar_position = 0;
@@ -250,13 +250,13 @@ gpu_bsw::createCIGAR(char* longCIGAR, char* CIGAR, int maxCIGAR,
     if (seqBShorter){
         longerSeq = seqA;
         shorterSeq = seqB;
-        beg_S = lengthShorterSeq - first_j ;
-        end_S = last_j; 
+        beg_S = lengthShorterSeq - first_j -1 ;
+        end_S = last_j -1; 
     } else {
         longerSeq = seqB;
         shorterSeq = seqA;
-        beg_S = lengthLongerSeq - first_i ; 
-        end_S = last_i;
+        beg_S = lengthLongerSeq - first_i -1 ; 
+        end_S = last_i -1;
     }
     
     if ( beg_S != 0){
@@ -923,8 +923,8 @@ gpu_bsw::sequence_dna_kernel(char* seqA_array, char* seqB_array, unsigned* prefi
         sideSeqLength = lengthSeqA;
     }
    
-    //if (false){ 
-    if (block_Id == 1 && thread_Id == 0 ){
+    if (false){ 
+    //if (block_Id == 1 && thread_Id == 0 ){
                 printf("FULL SCORING MATRIX\n");
                 int S_current_diagId    = 0;
                 int S_current_locOffset = 0;

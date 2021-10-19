@@ -240,9 +240,10 @@ gpu_bsw_driver::kernel_driver_dna(std::vector<std::string> reads, std::vector<st
                  alAend += stringsPerIt;
                  alBend += stringsPerIt;
                  top_scores_cpu += stringsPerIt;
+                 CIGAR_cpu += stringsPerIt*maxCIGAR;
 
-		 cudaStreamSynchronize (streams_cuda[0]);
-                 cudaStreamSynchronize (streams_cuda[1]);
+		        cudaStreamSynchronize (streams_cuda[0]);
+            cudaStreamSynchronize (streams_cuda[1]);
 
         }  // for iterations end here
 
