@@ -235,7 +235,7 @@ gpu_bsw::createCIGAR(char* longCIGAR, char* CIGAR, int maxCIGAR,
         bool seqBShorter, short first_j, short last_j, short first_i, short last_i) 
 {
   
-    printf("first_j = %d, last_j = %d, first_i = %d, last_i = %d\n", first_j, last_j, first_i, last_i);
+    //printf("first_j = %d, last_j = %d, first_i = %d, last_i = %d\n", first_j, last_j, first_i, last_i);
     int myId  = blockIdx.x;
     int myTId = threadIdx.x;
     short cigar_position = 0;
