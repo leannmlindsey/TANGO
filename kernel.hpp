@@ -28,7 +28,7 @@ __device__ short
 blockShuffleReduce(short val, unsigned lengthSeqB);
 
 __device__ __host__ short
-           findMax(short array[], int length, int* ind);
+            findMax(short first, short second, short third, short fourth);
 
 __device__ __host__ short
             findMaxFour(short first, short second, short third, short fourth, int* ind);
@@ -49,6 +49,11 @@ traceBack(short current_i, short current_j, char* seqA_array, char* seqB_array, 
 
 __global__ void
 sequence_dna_kernel(char* seqA_array, char* seqB_array, unsigned* prefix_lengthA,
+                    unsigned* prefix_lengthB, short* seqA_align_begin, short* seqA_align_end,
+                    short* seqB_align_begin, short* seqB_align_end, short* top_scores, short matchScore, short misMatchScore, short startGap, short extendGap);
+
+__global__ void
+sequence_dna_kernel_traceback(char* seqA_array, char* seqB_array, unsigned* prefix_lengthA,
                     unsigned* prefix_lengthB, short* seqA_align_begin, short* seqA_align_end,
                     short* seqB_align_begin, short* seqB_align_end, short* top_scores, 
                     char* longCIGAR_array, char* CIGAR_array, char* H_ptr_array, char* E_ptr_array, char* F_ptr_array, 
