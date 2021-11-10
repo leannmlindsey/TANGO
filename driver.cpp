@@ -90,6 +90,10 @@ gpu_bsw_driver::kernel_driver_dna(std::vector<std::string> reads, std::vector<st
 
         float total_packing = 0;
 
+        auto    end  = NOW;
+        std::chrono::duration<double>diff = end - start;
+        std::cout << "Total Execution Time (seconds) - Memory Allocation Host & Device:"<< diff.count() <<std::endl;
+
         auto start2 = NOW;
         for(int perGPUIts = 0; perGPUIts < its; perGPUIts++)
         {
@@ -170,6 +174,10 @@ gpu_bsw_driver::kernel_driver_dna(std::vector<std::string> reads, std::vector<st
             auto packing_end = NOW;
             std::chrono::duration<double> packing_dur = packing_end - packing_start;
 
+            end  = NOW;
+            diff = end - start;
+            std::cout << "Total Execution Time (seconds) - Sequence Packing:"<< diff.count() <<std::endl;
+
             total_packing += packing_dur.count();
 
             asynch_mem_copies_htd(&gpu_data, offsetA_h, offsetB_h, strA, strA_d, strB, strB_d, half_length_A, half_length_B, totalLengthA, totalLengthB, sequences_per_stream, sequences_stream_leftover, streams_cuda);
@@ -183,6 +191,10 @@ gpu_bsw_driver::kernel_driver_dna(std::vector<std::string> reads, std::vector<st
             printf("totShmem = %d, alignmentPad = %d, ShmemBytes = %d\n", totShmem, alignmentPad, ShmemBytes);
             if(ShmemBytes > 48000)
                 cudaFuncSetAttribute(gpu_bsw::sequence_dna_kernel, cudaFuncAttributeMaxDynamicSharedMemorySize, ShmemBytes);
+
+            end  = NOW;
+            diff = end - start;
+            std::cout << "Total Execution Time (seconds) - Move sequence data to device:"<< diff.count() <<std::endl;
 
             gpu_bsw::sequence_dna_kernel<<<sequences_per_stream, minSize, ShmemBytes, streams_cuda[0]>>>(
                 strA_d, strB_d, gpu_data.offset_ref_gpu, gpu_data.offset_query_gpu, gpu_data.ref_start_gpu,
@@ -201,6 +213,11 @@ gpu_bsw_driver::kernel_driver_dna(std::vector<std::string> reads, std::vector<st
             cudaStreamSynchronize (streams_cuda[0]);
             cudaStreamSynchronize (streams_cuda[1]);
 
+            end  = NOW;
+            diff = end - start;
+            std::cout << "Total Execution Time (seconds) - DNA Forward kernel:"<< diff.count() <<std::endl;
+
+
             auto sec_cpu_start = NOW;
             int newMin = get_new_min_length(alAend, alBend, blocksLaunched); // find the new largest of smaller lengths
             printf("\nnewMin = %d\n",newMin);
@@ -208,25 +225,29 @@ gpu_bsw_driver::kernel_driver_dna(std::vector<std::string> reads, std::vector<st
             std::chrono::duration<double> dur_sec_cpu = sec_cpu_end - sec_cpu_start;
             total_time_cpu += dur_sec_cpu.count();
 
-            printf("reverse kernel 1: parameters: seq_per_stream: %d, minsize = %d, ShmemBytes = %d, streams_cuda[0] = %d\n", sequences_per_stream, minSize, ShmemBytes, streams_cuda[0]);
-            gpu_bsw::sequence_dna_reverse<<<sequences_per_stream, newMin, ShmemBytes, streams_cuda[0]>>>(
-                    strA_d, strB_d, gpu_data.offset_ref_gpu, gpu_data.offset_query_gpu, gpu_data.ref_start_gpu,
-                    gpu_data.ref_end_gpu, gpu_data.query_start_gpu, gpu_data.query_end_gpu, gpu_data.scores_gpu, 
-                    gpu_data.longCIGAR_gpu, gpu_data.CIGAR_gpu, gpu_data.H_ptr_gpu, gpu_data.E_ptr_gpu, gpu_data.F_ptr_gpu,
-                    maxCIGAR, maxMatrixSize, matchScore, misMatchScore, startGap, extendGap);
-            cudaErrchk(cudaGetLastError());
+            //printf("reverse kernel 1: parameters: seq_per_stream: %d, minsize = %d, ShmemBytes = %d, streams_cuda[0] = %d\n", sequences_per_stream, minSize, ShmemBytes, streams_cuda[0]);
+            //gpu_bsw::sequence_dna_reverse<<<sequences_per_stream, newMin, ShmemBytes, streams_cuda[0]>>>(
+                    //strA_d, strB_d, gpu_data.offset_ref_gpu, gpu_data.offset_query_gpu, gpu_data.ref_start_gpu,
+                    //gpu_data.ref_end_gpu, gpu_data.query_start_gpu, gpu_data.query_end_gpu, gpu_data.scores_gpu, 
+                    //gpu_data.longCIGAR_gpu, gpu_data.CIGAR_gpu, gpu_data.H_ptr_gpu, gpu_data.E_ptr_gpu, gpu_data.F_ptr_gpu,
+                    //maxCIGAR, maxMatrixSize, matchScore, misMatchScore, startGap, extendGap);
+            //cudaErrchk(cudaGetLastError());
 
-            printf("reverse kernel 2: parameters: seq_per_stream: %d, minsize = %d, ShmemBytes = %d, streams_cuda[1] = %d\n", sequences_per_stream, minSize, ShmemBytes, streams_cuda[1]);
-            gpu_bsw::sequence_dna_reverse<<<sequences_per_stream + sequences_stream_leftover, newMin, ShmemBytes, streams_cuda[1]>>>(
-                    strA_d + half_length_A, strB_d + half_length_B, gpu_data.offset_ref_gpu + sequences_per_stream, gpu_data.offset_query_gpu + sequences_per_stream ,
-                    gpu_data.ref_start_gpu + sequences_per_stream, gpu_data.ref_end_gpu + sequences_per_stream, gpu_data.query_start_gpu + sequences_per_stream, gpu_data.query_end_gpu + sequences_per_stream,
-                    gpu_data.scores_gpu + sequences_per_stream, gpu_data.longCIGAR_gpu + sequences_per_stream, gpu_data.CIGAR_gpu + sequences_per_stream, 
-                    gpu_data.H_ptr_gpu + sequences_per_stream, gpu_data.E_ptr_gpu + sequences_per_stream, gpu_data.F_ptr_gpu + sequences_per_stream,
-                    maxCIGAR, maxMatrixSize, matchScore, misMatchScore, startGap, extendGap);
-            cudaErrchk(cudaGetLastError());
+            //printf("reverse kernel 2: parameters: seq_per_stream: %d, minsize = %d, ShmemBytes = %d, streams_cuda[1] = %d\n", sequences_per_stream, minSize, ShmemBytes, streams_cuda[1]);
+            //gpu_bsw::sequence_dna_reverse<<<sequences_per_stream + sequences_stream_leftover, newMin, ShmemBytes, streams_cuda[1]>>>(
+                    //strA_d + half_length_A, strB_d + half_length_B, gpu_data.offset_ref_gpu + sequences_per_stream, gpu_data.offset_query_gpu + sequences_per_stream ,
+                    //gpu_data.ref_start_gpu + sequences_per_stream, gpu_data.ref_end_gpu + sequences_per_stream, gpu_data.query_start_gpu + sequences_per_stream, gpu_data.query_end_gpu + sequences_per_stream,
+                    //gpu_data.scores_gpu + sequences_per_stream, gpu_data.longCIGAR_gpu + sequences_per_stream, gpu_data.CIGAR_gpu + sequences_per_stream, 
+                    //gpu_data.H_ptr_gpu + sequences_per_stream, gpu_data.E_ptr_gpu + sequences_per_stream, gpu_data.F_ptr_gpu + sequences_per_stream,
+                    //maxCIGAR, maxMatrixSize, matchScore, misMatchScore, startGap, extendGap);
+            //cudaErrchk(cudaGetLastError());
 
-            cudaStreamSynchronize (streams_cuda[0]);
-            cudaStreamSynchronize (streams_cuda[1]);
+            //cudaStreamSynchronize (streams_cuda[0]);
+            //cudaStreamSynchronize (streams_cuda[1]);
+
+            //end  = NOW;
+            //diff = end - start;
+            //std::cout << "Total Execution Time (seconds) - DNA Reverse kernel:"<< diff.count() <<std::endl;
 
             //printf("traceback kernel 1: parameters: seq_per_stream: %d, minsize = %d, ShmemBytes = %d, streams_cuda[0] = %d\n", sequences_per_stream, minSize, ShmemBytes, streams_cuda[0]);
             //gpu_bsw::sequence_dna_kernel_traceback<<<sequences_per_stream, minSize, ShmemBytes, streams_cuda[0]>>>(
@@ -240,10 +261,17 @@ gpu_bsw_driver::kernel_driver_dna(std::vector<std::string> reads, std::vector<st
             //gpu_bsw::sequence_dna_kernel_traceback<<<sequences_per_stream + sequences_stream_leftover, minSize, ShmemBytes, streams_cuda[1]>>>(
                 //strA_d + half_length_A, strB_d + half_length_B, gpu_data.offset_ref_gpu + sequences_per_stream, gpu_data.offset_query_gpu + sequences_per_stream,
                 //gpu_data.ref_start_gpu + sequences_per_stream, gpu_data.ref_end_gpu + sequences_per_stream, gpu_data.query_start_gpu + sequences_per_stream, gpu_data.query_end_gpu + sequences_per_stream,
-                 //gpu_data.scores_gpu + sequences_per_stream, gpu_data.longCIGAR_gpu + sequences_per_stream * maxCIGAR, gpu_data.CIGAR_gpu + sequences_per_stream * maxCIGAR , 
-                 //gpu_data.H_ptr_gpu + sequences_per_stream * maxMatrixSize, gpu_data.E_ptr_gpu + sequences_per_stream * maxMatrixSize, gpu_data.F_ptr_gpu + sequences_per_stream * maxMatrixSize,
+                //gpu_data.scores_gpu + sequences_per_stream, gpu_data.longCIGAR_gpu + sequences_per_stream * maxCIGAR, gpu_data.CIGAR_gpu + sequences_per_stream * maxCIGAR , 
+                //gpu_data.H_ptr_gpu + sequences_per_stream * maxMatrixSize, gpu_data.E_ptr_gpu + sequences_per_stream * maxMatrixSize, gpu_data.F_ptr_gpu + sequences_per_stream * maxMatrixSize,
                 //maxCIGAR, maxMatrixSize, matchScore, misMatchScore, startGap, extendGap);
             //cudaErrchk(cudaGetLastError());
+
+            //cudaStreamSynchronize (streams_cuda[0]);
+            //cudaStreamSynchronize (streams_cuda[1]);
+
+                                     //end  = NOW;
+             //diff = end - start;
+            //std::cout << "Total Execution Time (seconds) - DNA Traceback kernel:"<< diff.count() <<std::endl;
 
             asynch_mem_copies_dth(&gpu_data, alAbeg, alBbeg, top_scores_cpu, CIGAR_cpu, sequences_per_stream, sequences_stream_leftover, streams_cuda, maxCIGAR);
 
@@ -252,10 +280,14 @@ gpu_bsw_driver::kernel_driver_dna(std::vector<std::string> reads, std::vector<st
                  alAend += stringsPerIt;
                  alBend += stringsPerIt;
                  top_scores_cpu += stringsPerIt;
-                 //CIGAR_cpu += stringsPerIt*maxCIGAR;
+                 CIGAR_cpu += stringsPerIt*maxCIGAR;
 
 		        cudaStreamSynchronize (streams_cuda[0]);
             cudaStreamSynchronize (streams_cuda[1]);
+
+                                   end  = NOW;
+            diff = end - start;
+            std::cout << "Total Execution Time (seconds) - Copy results from device to host:"<< diff.count() <<std::endl;
 
         }  // for iterations end here
 
@@ -276,7 +308,7 @@ gpu_bsw_driver::kernel_driver_dna(std::vector<std::string> reads, std::vector<st
         #pragma omp barrier
     }  // paralle pragma ends
 
-    auto                          end  = NOW;
+    auto                         end  = NOW;
     std::chrono::duration<double> diff = end - start;
     std::cout << "Total Alignments:"<<totalAlignments<<"\n"<<"Max Reference Size:"<<maxContigSize<<"\n"<<"Max Query Size:"<<maxReadSize<<"\n" <<"Total Execution Time (seconds):"<< diff.count() <<std::endl;
 }// end of DNA kernel
