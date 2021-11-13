@@ -217,10 +217,10 @@ gpu_bsw_driver::kernel_driver_dna(std::vector<std::string> reads, std::vector<st
             cudaStreamSynchronize (streams_cuda[1]);
             
             // copyin back end index so that we can find new min
-            //asynch_mem_copies_dth_mid(&gpu_data, alAend, alBend, sequences_per_stream, sequences_stream_leftover, streams_cuda, maxCIGAR);
+            asynch_mem_copies_dth_mid(&gpu_data, alAend, alBend, sequences_per_stream, sequences_stream_leftover, streams_cuda, maxCIGAR);
 
-            //cudaStreamSynchronize (streams_cuda[0]);
-            //cudaStreamSynchronize (streams_cuda[1]);
+            cudaStreamSynchronize (streams_cuda[0]);
+            cudaStreamSynchronize (streams_cuda[1]);
 
             end  = NOW;
             diff = end - start;

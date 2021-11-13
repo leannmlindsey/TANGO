@@ -220,9 +220,9 @@ void dnaSampleRun(string refFile, string queFile, string out_file){
         results_file<<"index = " << k << "\t"
                 <<results_test.top_scores[k]<<"\t"
                 <<results_test.ref_begin[k]<<"\t"
-                <<results_test.ref_end[k] - 1<<"\t"
+                <<results_test.ref_end[k]<<"\t"
                 <<results_test.query_begin[k]<<"\t"
-                <<results_test.query_end[k] - 1<<"\t"
+                <<results_test.query_end[k]<<"\t"
                 <<*seq_cigar
                 <<endl;
   }
