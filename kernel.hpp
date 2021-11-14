@@ -42,13 +42,13 @@ __device__ void
 traceBack(short current_i, short current_j, char* seqA_array, char* seqB_array, unsigned* prefix_lengthA, 
                     unsigned* prefix_lengthB, short* seqA_align_begin, short* seqA_align_end,
                     short* seqB_align_begin, short* seqB_align_end, unsigned const maxMatrixSize, int maxCIGAR,
-                    char* longCIGAR, char* CIGAR, char* H_ptr, char* E_ptr, char* F_ptr, unsigned short* diagOffset);
+                    char* longCIGAR, char* CIGAR, char* H_ptr, unsigned short* diagOffset);
 
 __global__ void
 sequence_dna_kernel_traceback(char* seqA_array, char* seqB_array, unsigned* prefix_lengthA,
                     unsigned* prefix_lengthB, short* seqA_align_begin, short* seqA_align_end,
                     short* seqB_align_begin, short* seqB_align_end, short* top_scores, 
-                    char* longCIGAR_array, char* CIGAR_array, char* H_ptr_array, char* E_ptr_array, char* F_ptr_array, 
+                    char* longCIGAR_array, char* CIGAR_array, char* H_ptr_array, 
                     int maxCIGAR, unsigned const maxMatrixSize,
                     short matchScore, short misMatchScore, short startGap, short extendGap);
 

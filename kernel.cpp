@@ -332,7 +332,7 @@ __device__ void
 gpu_bsw::traceBack(short current_i, short current_j, char* seqA_array, char* seqB_array, unsigned* prefix_lengthA, 
                     unsigned* prefix_lengthB, short* seqA_align_begin, short* seqA_align_end,
                     short* seqB_align_begin, short* seqB_align_end, unsigned const maxMatrixSize, int maxCIGAR,
-                    char* longCIGAR, char* CIGAR, char* H_ptr, char* E_ptr, char* F_ptr, unsigned short* diagOffset)
+                    char* longCIGAR, char* CIGAR, char* H_ptr, unsigned short* diagOffset)
 {     
     
     int myId = blockIdx.x;
@@ -624,7 +624,7 @@ __global__ void
 gpu_bsw::sequence_dna_kernel_traceback(char* seqA_array, char* seqB_array, unsigned* prefix_lengthA,
                     unsigned* prefix_lengthB, short* seqA_align_begin, short* seqA_align_end,
                     short* seqB_align_begin, short* seqB_align_end, short* top_scores, 
-                    char* longCIGAR_array, char* CIGAR_array, char* H_ptr_array, char* E_ptr_array, char* F_ptr_array, 
+                    char* longCIGAR_array, char* CIGAR_array, char* H_ptr_array, 
                     int maxCIGAR, unsigned const maxMatrixSize, short matchScore, short misMatchScore, short startGap, short extendGap)
 {
     
@@ -639,7 +639,7 @@ gpu_bsw::sequence_dna_kernel_traceback(char* seqA_array, char* seqB_array, unsig
     char*    seqA;
     char*    seqB;
 
-    char* H_ptr, *E_ptr, *F_ptr;
+    char* H_ptr;
     char* CIGAR, *longCIGAR;
     char test = 0;
 
@@ -669,10 +669,6 @@ gpu_bsw::sequence_dna_kernel_traceback(char* seqA_array, char* seqB_array, unsig
     unsigned minSize = lengthSeqA < lengthSeqB ? lengthSeqA : lengthSeqB;
 
     H_ptr = H_ptr_array + (block_Id * maxMatrixSize);
-    E_ptr = E_ptr_array + (block_Id * maxMatrixSize);
-    F_ptr = F_ptr_array + (block_Id * maxMatrixSize);
-
-    //memset(H_ptr,0,maxMatrixSize);
 
     longCIGAR = longCIGAR_array + (block_Id * maxCIGAR);
     CIGAR = CIGAR_array + (block_Id * maxCIGAR);
@@ -1023,7 +1019,7 @@ gpu_bsw::sequence_dna_kernel_traceback(char* seqA_array, char* seqB_array, unsig
         gpu_bsw::traceBack(current_i, current_j, seqA_array, seqB_array, prefix_lengthA, 
                     prefix_lengthB, seqA_align_begin, seqA_align_end,
                     seqB_align_begin, seqB_align_end, maxMatrixSize, maxCIGAR,
-                    longCIGAR, CIGAR, H_ptr, E_ptr, F_ptr, diagOffset);
+                    longCIGAR, CIGAR, H_ptr, diagOffset);
 
     }
     __syncthreads();
