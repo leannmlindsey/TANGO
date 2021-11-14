@@ -234,7 +234,7 @@ void dnaSampleRun(string refFile, string queFile, string out_file){
   for(int l = 0; l < G_sequencesA.size(); l++){
     total_cells += G_sequencesA.at(l).size()*G_sequencesB.at(l).size();
   }
-  cout <<"Total Cells:"<<total_cells<<endl;
+  //cout <<"Total Cells:"<<total_cells<<endl;
 
   //gpu_bsw_driver::verificationTest(resultFile, results_test.g_alAbeg, results_test.g_alBbeg, results_test.g_alAend, results_test.g_alBend);
 

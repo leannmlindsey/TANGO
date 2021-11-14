@@ -691,6 +691,7 @@ gpu_bsw::sequence_dna_kernel_traceback(char* seqA_array, char* seqB_array, unsig
 
     char myColumnChar;
     // the shorter of the two strings is stored in thread registers
+    char H_temp = 0;
 
     if(lengthSeqA < lengthSeqB)
     {
@@ -854,20 +855,24 @@ gpu_bsw::sequence_dna_kernel_traceback(char* seqA_array, char* seqB_array, unsig
           
           if (fVal > hfVal){
                 //F_ptr[diagOffset[diagId] + locOffset] = '|'; //==> translated to 0000 0001
-                H_ptr[diagOffset[diagId] + locOffset] =  H_ptr[diagOffset[diagId] + locOffset] | 1;
+                //H_ptr[diagOffset[diagId] + locOffset] =  H_ptr[diagOffset[diagId] + locOffset] | 1;
+                H_temp = H_temp | 1;
           } else {
                 //F_ptr[diagOffset[diagId] + locOffset] = 'H';
-                H_ptr[diagOffset[diagId] + locOffset] =  H_ptr[diagOffset[diagId] + locOffset] & (~1);
+                //H_ptr[diagOffset[diagId] + locOffset] =  H_ptr[diagOffset[diagId] + locOffset] & (~1);
+                H_temp = H_temp & (~1);
           }
 
       		_curr_E = (eVal > heVal) ? eVal : heVal;
           if (j!=0){
             if (eVal > heVal) {
               //E_ptr[diagOffset[diagId] + locOffset] = '-';
-              H_ptr[diagOffset[diagId] + locOffset] =  H_ptr[diagOffset[diagId] + locOffset] | 2;
+              //H_ptr[diagOffset[diagId] + locOffset] =  H_ptr[diagOffset[diagId] + locOffset] | 2;
+              H_temp = H_temp | 2;
             } else {
               //E_ptr[diagOffset[diagId] + locOffset] = 'H';
-              H_ptr[diagOffset[diagId] + locOffset] =  H_ptr[diagOffset[diagId] + locOffset] & (~2);
+              //H_ptr[diagOffset[diagId] + locOffset] =  H_ptr[diagOffset[diagId] + locOffset] & (~2);
+              H_temp = H_temp & (~2);
             }
           }
           short testShufll = __shfl_sync(mask, _prev_prev_H, laneId - 1, 32);
@@ -891,25 +896,30 @@ gpu_bsw::sequence_dna_kernel_traceback(char* seqA_array, char* seqB_array, unsig
           //}
           if (ind == 0) {
                 //H_ptr[diagOffset[diagId] + locOffset] = '\\';
-                H_ptr[diagOffset[diagId] + locOffset] =  H_ptr[diagOffset[diagId] + locOffset] | 4;
-                H_ptr[diagOffset[diagId] + locOffset] =  H_ptr[diagOffset[diagId] + locOffset] | 8;
-
+                //H_ptr[diagOffset[diagId] + locOffset] =  H_ptr[diagOffset[diagId] + locOffset] | 4;
+                //H_ptr[diagOffset[diagId] + locOffset] =  H_ptr[diagOffset[diagId] + locOffset] | 8;
+                H_temp = H_temp | 4;
+                H_temp = H_temp | 8;
             } else if (ind == 1) {
                 //H_ptr[diagOffset[diagId] + locOffset] = '|'; 
-                H_ptr[diagOffset[diagId] + locOffset] =  H_ptr[diagOffset[diagId] + locOffset] & (~4);
-                H_ptr[diagOffset[diagId] + locOffset] =  H_ptr[diagOffset[diagId] + locOffset] | 8;            
+                //H_ptr[diagOffset[diagId] + locOffset] =  H_ptr[diagOffset[diagId] + locOffset] & (~4);
+                //H_ptr[diagOffset[diagId] + locOffset] =  H_ptr[diagOffset[diagId] + locOffset] | 8; 
+                H_temp = H_temp & (~4);
+                H_temp = H_temp | 8;           
             } else if (ind == 2) {
                 //H_ptr[diagOffset[diagId] + locOffset] = '-'; 
-                H_ptr[diagOffset[diagId] + locOffset] =  H_ptr[diagOffset[diagId] + locOffset] & (~8);
-                H_ptr[diagOffset[diagId] + locOffset] =  H_ptr[diagOffset[diagId] + locOffset] | 4;
-
+                //H_ptr[diagOffset[diagId] + locOffset] =  H_ptr[diagOffset[diagId] + locOffset] & (~8);
+                //H_ptr[diagOffset[diagId] + locOffset] =  H_ptr[diagOffset[diagId] + locOffset] | 4;
+                H_temp = H_temp & (~8);
+                H_temp = H_temp | 4;
             } else {
                 //H_ptr[diagOffset[diagId] + locOffset] = '*';
-                H_ptr[diagOffset[diagId] + locOffset] =  H_ptr[diagOffset[diagId] + locOffset] & (~8);
-                H_ptr[diagOffset[diagId] + locOffset] =  H_ptr[diagOffset[diagId] + locOffset] & (~4);
- 
+                //H_ptr[diagOffset[diagId] + locOffset] =  H_ptr[diagOffset[diagId] + locOffset] & (~8);
+                //H_ptr[diagOffset[diagId] + locOffset] =  H_ptr[diagOffset[diagId] + locOffset] & (~4);
+                H_temp = H_temp & (~8);
+                H_temp = H_temp & (~4);
           }
-
+          H_ptr[diagOffset[diagId] + locOffset] =  H_temp;
           thread_max_i = (thread_max >= _curr_H) ? thread_max_i : i;
           thread_max_j = (thread_max >= _curr_H) ? thread_max_j : thread_Id;
           thread_max   = (thread_max >= _curr_H) ? thread_max : _curr_H;
@@ -1010,10 +1020,10 @@ gpu_bsw::sequence_dna_kernel_traceback(char* seqA_array, char* seqB_array, unsig
         }
         //printf("diagId = %d, locOffset = %d, diagOffset[diagId] + locOffset = %d\n", diagId, locOffset,diagOffset[diagId] + locOffset );
         //printf("H_ptr[] = %c\n", H_ptr[diagOffset[diagId] + locOffset]);
-        //gpu_bsw::traceBack(current_i, current_j, seqA_array, seqB_array, prefix_lengthA, 
-                    //prefix_lengthB, seqA_align_begin, seqA_align_end,
-                    //seqB_align_begin, seqB_align_end, maxMatrixSize, maxCIGAR,
-                    //longCIGAR, CIGAR, H_ptr, E_ptr, F_ptr, diagOffset);
+        gpu_bsw::traceBack(current_i, current_j, seqA_array, seqB_array, prefix_lengthA, 
+                    prefix_lengthB, seqA_align_begin, seqA_align_end,
+                    seqB_align_begin, seqB_align_end, maxMatrixSize, maxCIGAR,
+                    longCIGAR, CIGAR, H_ptr, E_ptr, F_ptr, diagOffset);
 
     }
     __syncthreads();
