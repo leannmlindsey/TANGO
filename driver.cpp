@@ -92,12 +92,12 @@ gpu_bsw_driver::kernel_driver_dna(std::vector<std::string> reads, std::vector<st
 
         auto    end  = NOW;
         std::chrono::duration<double>diff = end - start;
-        std::cout << "Total Execution Time (seconds) - Memory Allocation Host & Device:"<< diff.count() <<std::endl;
+        //std::cout << "Total Execution Time (seconds) - Memory Allocation Host & Device:"<< diff.count() <<std::endl;
 
         auto start2 = NOW;
         for(int perGPUIts = 0; perGPUIts < its; perGPUIts++)
         {
-            printf("perGPUIts = %d of %d its\n",perGPUIts, its);
+            //printf("perGPUIts = %d of %d its\n",perGPUIts, its);
             auto packing_start = NOW;
             int                                      blocksLaunched = 0;
             std::vector<std::string>::const_iterator beginAVec;
@@ -188,7 +188,7 @@ gpu_bsw_driver::kernel_driver_dna(std::vector<std::string> reads, std::vector<st
             
             unsigned alignmentPad = 4 + (4 - totShmem % 4);
             size_t   ShmemBytes = totShmem + alignmentPad + sizeof(int) * (maxContigSize + maxReadSize + 2 );
-            printf("totShmem = %d, alignmentPad = %d, ShmemBytes = %d\n", totShmem, alignmentPad, ShmemBytes);
+            //printf("totShmem = %d, alignmentPad = %d, ShmemBytes = %d\n", totShmem, alignmentPad, ShmemBytes);
             if(ShmemBytes > 48000)
                 cudaFuncSetAttribute(gpu_bsw::sequence_dna_kernel_traceback, cudaFuncAttributeMaxDynamicSharedMemorySize, ShmemBytes);
 
