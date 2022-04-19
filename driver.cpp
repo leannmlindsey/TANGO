@@ -59,7 +59,7 @@ gpu_bsw_driver::kernel_driver_dna(std::vector<std::string> reads, std::vector<st
         size_t gpu_mem_avail = get_tot_gpu_mem(myGPUid);
         unsigned max_alns_gpu = ceil((gpu_mem_avail*(double)1/NSTREAMS)/tot_mem_req_per_aln);
 
-        unsigned max_alns_sugg = 1024;  //this is a function of the size of the sequences and making sure you can saturate the GPU for computation
+        unsigned max_alns_sugg = 8192;  //this is a function of the size of the sequences and making sure you can saturate the GPU for computation
         max_alns_gpu = max_alns_gpu > max_alns_sugg ? max_alns_sugg : max_alns_gpu; 
         int       its    = (max_per_device>max_alns_gpu)?(ceil((double)max_per_device/max_alns_gpu)):1;
         

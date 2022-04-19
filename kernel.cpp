@@ -415,7 +415,7 @@ gpu_bsw::traceBack(short current_i, short current_j, char* seqA_array, char* seq
             next_j = current_j - 1;
             break;
         default:
-            printf("default, the char is not \ | or - ********* char is : %c\n", H_ptr[diagOffset[current_diagId] + current_locOffset] & 0b00001100);
+            //printf("default, the char is not \ | or - ********* char is : %c\n", H_ptr[diagOffset[current_diagId] + current_locOffset] & 0b00001100);
         
 
     }
