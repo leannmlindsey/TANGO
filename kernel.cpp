@@ -440,7 +440,6 @@ gpu_bsw::traceBack(short current_i, short current_j, char* seqA_array, char* seq
         //if(myId==0 && myTId ==0) {
           //  printf("current_i:%d, current_j:%d, next_i:%d, next_j:%d, %c , %c\n",current_i, current_j, next_i, next_j, shorterSeq[current_j], longerSeq[current_i]);
         //} 
-      
         if (next_i == current_i){
             //printf("BLOCK #%d, E_ptr[] = %c\n", myId, E_ptr[diagOffset[current_diagId] + current_locOffset]); 
             //printf("JUST ENTERED E, E_ptr = %d\n", E_ptr[diagOffset[current_diagId] + current_locOffset]);
@@ -598,11 +597,8 @@ gpu_bsw::traceBack(short current_i, short current_j, char* seqA_array, char* seq
         current_i=current_i;
         current_j=current_j;
     }
-    //if (myId == 0 && myTId == 0)
-      //printf("current_i = %d, current_j = %d\n", current_i, current_j);    
-    //This section commented out because we don't
-    //need to record the start positions from traceback because
-    //we have them already from the reverse traceback.
+    //if (myId == 0)
+      //printf("current_i = %d, current_j = %d\n", current_i, current_j);
     if(lengthSeqA < lengthSeqB){  
         seqB_align_begin[myId] = current_i;
         seqA_align_begin[myId] = current_j;
@@ -610,7 +606,6 @@ gpu_bsw::traceBack(short current_i, short current_j, char* seqA_array, char* seq
         seqA_align_begin[myId] = current_i;
         seqB_align_begin[myId] = current_j;
     }
- 
 
     if (myTId == 0){
      gpu_bsw::createCIGAR(longCIGAR, CIGAR, maxCIGAR, seqA, seqB, lengthShorterSeq, lengthLongerSeq, seqBShorter, first_j, current_j, first_i, current_i);
@@ -996,9 +991,9 @@ gpu_bsw::sequence_dna_kernel_traceback(char* seqA_array, char* seqB_array, unsig
         }
         else
         {
-        seqA_align_end[block_Id] = thread_max_i;
-        seqB_align_end[block_Id] = thread_max_j;
-        top_scores[block_Id] = thread_max;
+          seqA_align_end[block_Id] = thread_max_i;
+          seqB_align_end[block_Id] = thread_max_j;
+          top_scores[block_Id] = thread_max;
         }
 
         //printf("before calling TRACEBACK, BLOCK #%d, current_i = %d, current_j = %d\n", block_Id, current_i, current_j);
@@ -1228,9 +1223,6 @@ gpu_bsw::sequence_aa_kernel(char* seqA_array, char* seqB_array, unsigned* prefix
 
   thread_max = blockShuffleReduce_with_index(thread_max, thread_max_i, thread_max_j,
                                   minSize);  // thread 0 will have the correct values
-
-
-
 
   if(thread_Id == 0)
   {
