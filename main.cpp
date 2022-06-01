@@ -119,31 +119,38 @@ void proteinSampleRun(string refFile, string queFile, string out_file){
          -5, -5, -5, -5, -5, -5, -5, -5, -5, -5, -5, -5, -5, -5, -5, -5, -5, -5, -5, -5, -5, -5, -5,  1 	// *
    };*/
 
+    std::string seq_cigar;
+    char* str_ptr;
+
     gpu_bsw_driver::alignment_results results_test;
     gpu_bsw_driver::kernel_driver_aa(G_sequencesB, G_sequencesA, &results_test, maxCIGAR, scores_matrix, -6, -1, 0.5);
 
   //  gpu_bsw_driver::verificationTest(resultFile, results_test.g_alAbeg, results_test.g_alBbeg, results_test.g_alAend, results_test.g_alBend);
 
-  // ofstream results_file(out_file);
+   ofstream results_file(out_file);
+
+   str_ptr = &results_test.CIGAR[0];
+   for(int k = 0; k < G_sequencesA.size(); k++){
+         seq_cigar = str_ptr;
+         results_file<<results_test.top_scores[k]<<"\t"
+                 <<results_test.ref_begin[k]-1<<"\t"
+                 <<results_test.ref_end[k]<<"\t"
+                 <<results_test.query_begin[k]-1<<"\t"
+                 <<results_test.query_end[k]<<"\t"
+                 <<seq_cigar
+                 <<endl;
+         str_ptr=str_ptr+maxCIGAR;
+   }
+   results_file.flush();
+   results_file.close();
+
+  free_alignments(&results_test);
+  //for(int l = 0; l < G_sequencesA.size(); l++){
+    //total_cells += G_sequencesA.at(l).size()*G_sequencesB.at(l).size();
+  //}
 
 
-  // for(int k = 0; k < G_sequencesA.size(); k++){
-  //       results_file<<results_test.top_scores[k]<<"\t"
-  //               <<results_test.ref_begin[k]<<"\t"
-  //               <<results_test.ref_end[k] - 1<<"\t"
-  //               <<results_test.query_begin[k]<<"\t"
-  //               <<results_test.query_end[k] - 1
-  //               <<endl;
-  // }
-  // results_file.flush();
-  // results_file.close();
-
-  for(int l = 0; l < G_sequencesA.size(); l++){
-    total_cells += G_sequencesA.at(l).size()*G_sequencesB.at(l).size();
-  }
-
-
-    cout << "Total Cells:"<<total_cells<<endl;
+    //cout << "Total Cells:"<<total_cells<<endl;
 }
 
 
