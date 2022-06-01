@@ -18,7 +18,8 @@ void initialize_alignments(gpu_bsw_driver::alignment_results *alignments, int ma
     cudaMallocHost(&(alignments->query_begin), sizeof(short)*max_alignments);
     cudaMallocHost(&(alignments->query_end), sizeof(short)*max_alignments);
     cudaMallocHost(&(alignments->top_scores), sizeof(short)*max_alignments);
-    cudaMallocHost(&(alignments->CIGAR), sizeof(char)*maxCIGAR*max_alignments);
+    cudaMallocHost(&(alignments->CIGAR), sizeof(char)*maxCIGAR*(max_alignments));
+    printf("index size at allocation: %x\n",sizeof(char)*maxCIGAR*(max_alignments));
 }
 
 void free_alignments(gpu_bsw_driver::alignment_results *alignments){
@@ -70,11 +71,20 @@ void asynch_mem_copies_dth_mid(gpu_alignments* gpu_data, short* alAend, short* a
             
 }
 
-void asynch_mem_copies_dth(gpu_alignments* gpu_data, short* alAbeg, short* alBbeg, short* top_scores_cpu, char* CIGAR_cpu, int sequences_per_stream, int sequences_stream_leftover, cudaStream_t* streams_cuda, int maxCIGAR){
-           cudaErrchk(cudaMemcpyAsync(alAbeg, gpu_data->ref_start_gpu, sequences_per_stream * sizeof(short),
+void asynch_mem_copies_dth(gpu_alignments* gpu_data, short* alAbeg, short* alBbeg, short* alAend, short* alBend, short* top_scores_cpu, char* CIGAR_cpu, int sequences_per_stream, int sequences_stream_leftover, cudaStream_t* streams_cuda, int maxCIGAR){
+          cudaErrchk(cudaMemcpyAsync(alAbeg, gpu_data->ref_start_gpu, sequences_per_stream * sizeof(short),
                                   cudaMemcpyDeviceToHost, streams_cuda[0]));
           cudaErrchk(cudaMemcpyAsync(alAbeg + sequences_per_stream, gpu_data->ref_start_gpu + sequences_per_stream, (sequences_per_stream + sequences_stream_leftover) * sizeof(short),
                                   cudaMemcpyDeviceToHost, streams_cuda[1]));
+          
+          cudaErrchk(cudaMemcpyAsync(alAend, gpu_data->ref_end_gpu, sequences_per_stream * sizeof(short),
+                cudaMemcpyDeviceToHost, streams_cuda[0]));
+          cudaErrchk(cudaMemcpyAsync(alAend + sequences_per_stream, gpu_data->ref_end_gpu + sequences_per_stream, 
+                (sequences_per_stream + sequences_stream_leftover) * sizeof(short), cudaMemcpyDeviceToHost, streams_cuda[1]));
+
+          cudaErrchk(cudaMemcpyAsync(alBend, gpu_data->query_end_gpu, sequences_per_stream * sizeof(short), cudaMemcpyDeviceToHost, streams_cuda[0]));
+          cudaErrchk(cudaMemcpyAsync(alBend + sequences_per_stream, gpu_data->query_end_gpu + sequences_per_stream, (sequences_per_stream + sequences_stream_leftover) * sizeof(short), 
+                cudaMemcpyDeviceToHost, streams_cuda[1]));
 
           cudaErrchk(cudaMemcpyAsync(alBbeg, gpu_data->query_start_gpu, sequences_per_stream * sizeof(short),
                           cudaMemcpyDeviceToHost, streams_cuda[0]));

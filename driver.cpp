@@ -67,7 +67,7 @@ gpu_bsw_driver::kernel_driver_dna(std::vector<std::string> reads, std::vector<st
         std::cout<<"Mem (bytes) avail on device "<<myGPUid<<":"<<(long unsigned)gpu_mem_avail<<"\n";
         std::cout<<"Mem (bytes) using on device "<<myGPUid<<":"<<gpu_mem_avail*factor<<"\n";
         std::cout<<"Diff "<<myGPUid<<":"<<(long unsigned)gpu_mem_avail-gpu_mem_avail*factor<<"\n";
-        std::cout<<"Memory required per alignment: "<<tot_mem_req_per_aln<<"\n";
+        std::cout<<"MaxRead = "<<maxReadSize<<", MaxRef = "<<maxContigSize<<", Memory required per alignment: "<<tot_mem_req_per_aln<<"\n";
         std::cout<<"Maximum Alignments: "<<max_alns_gpu<<"\n";
         
 
