@@ -277,6 +277,7 @@ gpu_bsw_driver::kernel_driver_aa(std::vector<std::string> reads, std::vector<std
     //("\nmaxContigSize = %d\n",maxContigSize);
     unsigned maxReadSize = getMaxLength(reads);
     //printf("\nmaxReadSize = %d\n",maxReadSize);
+
     unsigned const maxMatrixSize = (maxContigSize + 1 ) * (maxReadSize + 1);
     unsigned totalAlignments = contigs.size(); // assuming that read and contig vectors are same length
 
@@ -304,7 +305,8 @@ gpu_bsw_driver::kernel_driver_aa(std::vector<std::string> reads, std::vector<std
     
     initialize_alignments(alignments, totalAlignments, maxCIGAR); // pinned memory allocation
     auto start = NOW;
-    size_t tot_mem_req_per_aln = maxReadSize + maxContigSize + 2 * sizeof(int) + 6 * sizeof(short) + 2 * sizeof(char) * maxCIGAR + sizeof(char) * maxMatrixSize;
+
+    size_t tot_mem_req_per_aln = maxReadSize + maxContigSize + 2 * sizeof(int) + 6 * sizeof(short) + (1.25 * maxReadSize * maxContigSize) + 2 * (maxCIGAR);
     #pragma omp parallel
     {
 
@@ -318,13 +320,17 @@ gpu_bsw_driver::kernel_driver_aa(std::vector<std::string> reads, std::vector<std
         cudaStreamCreate(&streams_cuda[stm]);
       }
       if(my_cpu_id == 0)std::cout<<"Number of GPUs being used:"<<omp_get_num_threads()<<"\n";
+        factor = 0.75*1/NSTREAMS;
         size_t gpu_mem_avail = get_tot_gpu_mem(myGPUid);
-        unsigned max_alns_gpu = floor(((double)gpu_mem_avail*factor)/tot_mem_req_per_aln);
-        unsigned max_alns_sugg = 20000;
+        unsigned max_alns_gpu = ceil(((double)gpu_mem_avail*factor)/tot_mem_req_per_aln);
+        unsigned max_alns_sugg = 8192;
         max_alns_gpu = max_alns_gpu > max_alns_sugg ? max_alns_sugg : max_alns_gpu;
         int       its    = (max_per_device>max_alns_gpu)?(ceil((double)max_per_device/max_alns_gpu)):1;
         std::cout<<"Mem (bytes) avail on device "<<myGPUid<<":"<<(long unsigned)gpu_mem_avail<<"\n";
         std::cout<<"Mem (bytes) using on device "<<myGPUid<<":"<<(long unsigned)gpu_mem_avail*factor<<"\n";
+        std::cout<<"Diff "<<myGPUid<<":"<<(long unsigned)gpu_mem_avail-gpu_mem_avail*factor<<"\n";
+        std::cout<<"MaxRead = "<<maxReadSize<<", MaxRef = "<<maxContigSize<<", Memory required per alignment: "<<tot_mem_req_per_aln<<"\n";
+        std::cout<<"Maximum Alignments: "<<max_alns_gpu<<"\n";
 
       int BLOCKS_l = alignmentsPerDevice;
       if(my_cpu_id == deviceCount - 1)
@@ -362,7 +368,7 @@ gpu_bsw_driver::kernel_driver_aa(std::vector<std::string> reads, std::vector<std
       float total_packing = 0;
 
       auto start2 = NOW;
-      std::cout<<"loop begin\n";
+      //std::cout<<"loop begin\n";
       for(int perGPUIts = 0; perGPUIts < its; perGPUIts++)
       {
           auto packing_start = NOW;
@@ -445,26 +451,30 @@ gpu_bsw_driver::kernel_driver_aa(std::vector<std::string> reads, std::vector<std
 
           asynch_mem_copies_htd(&gpu_data, offsetA_h, offsetB_h, strA, strA_d, strB, strB_d, half_length_A, half_length_B, totalLengthA, totalLengthB, sequences_per_stream, sequences_stream_leftover, streams_cuda);
           unsigned minSize = (maxReadSize < maxContigSize) ? maxReadSize : maxContigSize;
-          unsigned totShmem = 3 * (minSize + 1) * sizeof(short);
+          unsigned maxSize = (maxReadSize > maxContigSize) ? maxReadSize : maxContigSize;
+          unsigned totShmem = 6 * (minSize + 1) * sizeof(short) + 6 * minSize + (minSize & 1) + maxSize + SCORE_MAT_SIZE * sizeof(short) + ENCOD_MAT_SIZE * sizeof(short); //check this
           unsigned alignmentPad = 4 + (4 - totShmem % 4);
           size_t   ShmemBytes = totShmem + alignmentPad;
           if(ShmemBytes > 48000)
-              cudaFuncSetAttribute(gpu_bsw::sequence_aa_kernel, cudaFuncAttributeMaxDynamicSharedMemorySize, ShmemBytes);
+              cudaFuncSetAttribute(gpu_bsw::sequence_aa_kernel_traceback, cudaFuncAttributeMaxDynamicSharedMemorySize, ShmemBytes);
 
-          gpu_bsw::sequence_aa_kernel<<<sequences_per_stream, minSize, ShmemBytes, streams_cuda[0]>>>(
-              strA_d, strB_d, gpu_data.offset_ref_gpu, gpu_data.offset_query_gpu, gpu_data.ref_start_gpu,
-              gpu_data.ref_end_gpu, gpu_data.query_start_gpu, gpu_data.query_end_gpu, gpu_data.scores_gpu,
-              openGap, extendGap, d_scoring_matrix, d_encoding_matrix);
-          cudaErrchk(cudaGetLastError());
 
-          gpu_bsw::sequence_aa_kernel<<<sequences_per_stream + sequences_stream_leftover, minSize, ShmemBytes, streams_cuda[1]>>>(
-              strA_d + half_length_A, strB_d + half_length_B, gpu_data.offset_ref_gpu + sequences_per_stream, gpu_data.offset_query_gpu + sequences_per_stream,
+          gpu_bsw::sequence_aa_kernel_traceback<<<sequences_per_stream, minSize, ShmemBytes, streams_cuda[0]>>>(
+                strA_d, strB_d, gpu_data.offset_ref_gpu, gpu_data.offset_query_gpu, gpu_data.ref_start_gpu,
+                gpu_data.ref_end_gpu, gpu_data.query_start_gpu, gpu_data.query_end_gpu, gpu_data.scores_gpu, 
+                gpu_data.longCIGAR_gpu, gpu_data.CIGAR_gpu, gpu_data.H_ptr_gpu,
+                maxCIGAR, maxMatrixSize, openGap, extendGap, d_scoring_matrix, d_encoding_matrix);
+            cudaErrchk(cudaGetLastError());
+
+          gpu_bsw::sequence_aa_kernel_traceback<<<sequences_per_stream, minSize, ShmemBytes, streams_cuda[0]>>>(
+                strA_d + half_length_A, strB_d + half_length_B, gpu_data.offset_ref_gpu + sequences_per_stream, gpu_data.offset_query_gpu + sequences_per_stream,
                 gpu_data.ref_start_gpu + sequences_per_stream, gpu_data.ref_end_gpu + sequences_per_stream, gpu_data.query_start_gpu + sequences_per_stream, gpu_data.query_end_gpu + sequences_per_stream,
-                gpu_data.scores_gpu + sequences_per_stream, openGap, extendGap, d_scoring_matrix, d_encoding_matrix);
-          cudaErrchk(cudaGetLastError());
+                gpu_data.scores_gpu + sequences_per_stream, gpu_data.longCIGAR_gpu + sequences_per_stream * maxCIGAR, gpu_data.CIGAR_gpu + sequences_per_stream * maxCIGAR , 
+                gpu_data.H_ptr_gpu + sequences_per_stream * maxMatrixSize, maxCIGAR, maxMatrixSize,
+                openGap, extendGap, d_scoring_matrix, d_encoding_matrix);
 
-          // copyin back end index so that we can find new min
-          asynch_mem_copies_dth_mid(&gpu_data, alAend, alBend, sequences_per_stream, sequences_stream_leftover, streams_cuda, maxCIGAR);
+            cudaErrchk(cudaGetLastError());
+
 
           cudaStreamSynchronize (streams_cuda[0]);
           cudaStreamSynchronize (streams_cuda[1]);
@@ -474,17 +484,6 @@ gpu_bsw_driver::kernel_driver_aa(std::vector<std::string> reads, std::vector<std
           auto sec_cpu_end = NOW;
           std::chrono::duration<double> dur_sec_cpu = sec_cpu_end - sec_cpu_start;
           total_time_cpu += dur_sec_cpu.count();
-
-          gpu_bsw::sequence_aa_reverse<<<sequences_per_stream, newMin, ShmemBytes, streams_cuda[0]>>>(
-                  strA_d, strB_d, gpu_data.offset_ref_gpu, gpu_data.offset_query_gpu, gpu_data.ref_start_gpu,
-                  gpu_data.ref_end_gpu, gpu_data.query_start_gpu, gpu_data.query_end_gpu, gpu_data.scores_gpu, openGap, extendGap, d_scoring_matrix, d_encoding_matrix);
-          cudaErrchk(cudaGetLastError());
-
-          gpu_bsw::sequence_aa_reverse<<<sequences_per_stream + sequences_stream_leftover, newMin, ShmemBytes, streams_cuda[1]>>>(
-                  strA_d + half_length_A, strB_d + half_length_B, gpu_data.offset_ref_gpu + sequences_per_stream, gpu_data.offset_query_gpu + sequences_per_stream ,
-                  gpu_data.ref_start_gpu + sequences_per_stream, gpu_data.ref_end_gpu + sequences_per_stream, gpu_data.query_start_gpu + sequences_per_stream, gpu_data.query_end_gpu + sequences_per_stream,
-                  gpu_data.scores_gpu + sequences_per_stream, openGap, extendGap, d_scoring_matrix, d_encoding_matrix);
-          cudaErrchk(cudaGetLastError());
 
           asynch_mem_copies_dth(&gpu_data, alAbeg, alBbeg, alAend, alBend, top_scores_cpu, CIGAR_cpu, sequences_per_stream, sequences_stream_leftover, streams_cuda, maxCIGAR);
 

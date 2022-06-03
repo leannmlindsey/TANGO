@@ -8,8 +8,10 @@ gpu_alignments::gpu_alignments(int max_alignments, int maxCIGAR, unsigned const 
     cudaErrchk(cudaMalloc(&query_end_gpu, (max_alignments) * sizeof(short)));
     cudaErrchk(cudaMalloc(&query_start_gpu, (max_alignments) * sizeof(short)));
     cudaErrchk(cudaMalloc(&scores_gpu, (max_alignments) * sizeof(short)));
+    printf("the size allocated for  CIGAR is %d\n", max_alignments*maxCIGAR);
     cudaErrchk(cudaMalloc(&CIGAR_gpu, (max_alignments) * sizeof(char) * maxCIGAR));
     cudaErrchk(cudaMalloc(&H_ptr_gpu, 1.25*sizeof(char)*maxMatrixSize * (max_alignments))); // added a buffer because of cuda-error in larger sequences
+    printf("the size allocated for longCIGAR is %d\n", max_alignments*maxCIGAR);
     cudaErrchk(cudaMalloc(&longCIGAR_gpu, sizeof(char)*maxCIGAR * (max_alignments)));
 }
 

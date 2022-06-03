@@ -430,10 +430,10 @@ gpu_bsw::traceBack(short current_i, short current_j, char* seqA_array, char* seq
    
     while(((current_i != next_i) || (current_j != next_j)) && (next_j != 0) && (next_i != 0))
     {   
-         
+       //printf("in WHILE loop, cur_i=%d, cur_j=%d\n",current_i, current_j);
        //if(myId==0 && myTId ==0) {
             //for (int i = 0; i <= counter; i++){
-                //printf("%c",longCIGAR[i]);
+              //  printf("%c",longCIGAR[i]);
             //}
             //printf("\n\n");
         //}  
@@ -455,14 +455,14 @@ gpu_bsw::traceBack(short current_i, short current_j, char* seqA_array, char* seq
             //}
             // no match, no vertical movement, query has Insertion if que shorter and Deletion if ref is shorter       
             longCIGAR[counter] = seqBShorter ? 'I' : 'D';
-            
-            if( longCIGAR[counter-1] == 'X' && last_i == current_i){
-                longCIGAR[counter-1] = seqBShorter ? 'I' : 'D'; //an aligned mismatch before an insertion or deletion is a part of the insertion or deletion
-            
+            if (counter != 0){
+                if( longCIGAR[counter-1] == 'X' && last_i == current_i){
+                    longCIGAR[counter-1] = seqBShorter ? 'I' : 'D'; //an aligned mismatch before an insertion or deletion is a part of the insertion or deletion
+                }
                 //if(myId ==0 && myTId ==0) {
                     //printf(" mismatch before Indel, change X to I or D \n");
                 //}
-            //}     
+            }     
 
 
             if (shorterSeq[current_j] == longerSeq[current_i] && gapOpen == 1 && next_i == current_i) {
@@ -480,16 +480,17 @@ gpu_bsw::traceBack(short current_i, short current_j, char* seqA_array, char* seq
             //if(myId==0 && myTId ==0){
                 //printf("in F - gapOpen = %d, current matrix = %c, F_ptr = %d\n", gapOpen, matrix,F_ptr[diagOffset[current_diagId] + current_locOffset]);
                 
-            }
+            //}
             longCIGAR[counter] = seqBShorter ? 'D' : 'I';
-
-            if( longCIGAR[counter-1] == 'X' && last_j == current_j){
-                longCIGAR[counter-1] = seqBShorter ? 'D' : 'I'; //an aligned mismatch before an insertion or deletion is a part of the insertion or deletion
+            if( counter != 0) {
+                if( longCIGAR[counter-1] == 'X' && last_j == current_j){
+                    longCIGAR[counter-1] = seqBShorter ? 'D' : 'I'; //an aligned mismatch before an insertion or deletion is a part of the insertion or deletion
             
                 //if(myId ==0 && myTId ==0) {
                     //printf(" mismatch before Indel, change X to I or D \n");
                 //}
-            } 
+                } 
+            }
             if (shorterSeq[current_j] == longerSeq[current_i] && gapOpen == 1 && next_j == current_j -1) {
                 longCIGAR[counter] = '=';
             }
@@ -1021,9 +1022,11 @@ gpu_bsw::sequence_dna_kernel_traceback(char* seqA_array, char* seqB_array, unsig
 }
 
 __global__ void
-gpu_bsw::sequence_aa_kernel(char* seqA_array, char* seqB_array, unsigned* prefix_lengthA,
+gpu_bsw::sequence_aa_kernel_traceback(char* seqA_array, char* seqB_array, unsigned* prefix_lengthA,
                     unsigned* prefix_lengthB, short* seqA_align_begin, short* seqA_align_end,
-                    short* seqB_align_begin, short* seqB_align_end, short* top_scores, short startGap, short extendGap, short* scoring_matrix, short* encoding_matrix)
+                    short* seqB_align_begin, short* seqB_align_end, short* top_scores, char* longCIGAR_array, 
+                    char* CIGAR_array, char* H_ptr_array, int maxCIGAR, unsigned const maxMatrixSize, 
+                    short startGap, short extendGap, short* scoring_matrix, short* encoding_matrix)
 {
   int block_Id  = blockIdx.x;
   int thread_Id = threadIdx.x;
@@ -1036,6 +1039,10 @@ gpu_bsw::sequence_aa_kernel(char* seqA_array, char* seqB_array, unsigned* prefix
   char*    seqA;
   char*    seqB;
   char* longer_seq;
+
+  char* H_ptr;
+  char* CIGAR, *longCIGAR;
+  char test = 0;
 
   extern __shared__ char is_valid_array[];
   char*                  is_valid = &is_valid_array[0];
@@ -1059,6 +1066,13 @@ gpu_bsw::sequence_aa_kernel(char* seqA_array, char* seqB_array, unsigned* prefix
   unsigned maxSize = lengthSeqA > lengthSeqB ? lengthSeqA : lengthSeqB;
   unsigned minSize = lengthSeqA < lengthSeqB ? lengthSeqA : lengthSeqB;
 
+  H_ptr = H_ptr_array + (block_Id * maxMatrixSize);
+
+  longCIGAR = longCIGAR_array + (block_Id * maxCIGAR);
+  CIGAR = CIGAR_array + (block_Id * maxCIGAR);
+
+  unsigned short* diagOffset = (unsigned short*) (&is_valid_array[3 * (minSize + 1) * sizeof(short)]);
+
 // shared memory space for storing longer of the two strings
   memset(is_valid, 0, minSize);
   is_valid += minSize;
@@ -1067,6 +1081,7 @@ gpu_bsw::sequence_aa_kernel(char* seqA_array, char* seqB_array, unsigned* prefix
   memset(is_valid, 0, minSize);
 
   char myColumnChar;
+  char H_temp = 0;
   // the shorter of the two strings is stored in thread registers
   if(lengthSeqA < lengthSeqB)
   {
@@ -1083,18 +1098,52 @@ gpu_bsw::sequence_aa_kernel(char* seqA_array, char* seqB_array, unsigned* prefix
 
   __syncthreads(); // this is required here so that complete sequence has been copied to shared memory
 
-  int   i            = 1;
+  int   i            = 0;
   int   j            = thread_Id;
   short thread_max   = 0; // to maintain the thread max score
   short thread_max_i = 0; // to maintain the DP coordinate i for the longer string
   short thread_max_j = 0;// to maintain the DP cooirdinate j for the shorter string
   int ind;
 
+  //set up the prefixSum for diagonal offset look up table for H_ptr, E_ptr, F_ptr
+    int    locSum = 0;
+     
+    for(int diag = 0; diag < lengthSeqA + lengthSeqB - 1; diag++) 
+    {
+        
+        int locDiagId = diag;
+        if(thread_Id == 0)
+        {
+            
+            if(locDiagId <= minSize + 1)
+            {
+                locSum += locDiagId;
+                diagOffset[locDiagId] = locSum;
+            }
+            else if(locDiagId > maxSize + 1)
+            {
+                locSum += (minSize + 1) - (locDiagId - (maxSize + 1));
+                diagOffset[locDiagId] = locSum;
+            }
+            else
+            {
+                locSum += minSize + 1;
+                diagOffset[locDiagId] = locSum;
+            }
+            diagOffset[lengthSeqA + lengthSeqB] = locSum + 2; //what is this for?
+            
+            //printf("diag = %d, diagOffset = %d\n", locDiagId, diagOffset[locDiagId]);
+        }
+    }
+    
+    __syncthreads(); //to make sure prefixSum is calculated before the threads start calculations.  
+
+
 //initializing registers for storing diagonal values for three recent most diagonals (separate tables for
 //H, E and F)
-  short _curr_H = 0, _curr_F = 0, _curr_E = 0;
-  short _prev_H = 0, _prev_F = 0, _prev_E = 0;
-  short _prev_prev_H = 0, _prev_prev_F = 0, _prev_prev_E = 0;
+  short _curr_H = 0, _curr_F = -100, _curr_E = -100;
+  short _prev_H = 0, _prev_F = -100, _prev_E = -100;
+  short _prev_prev_H = 0, _prev_prev_F = -100, _prev_prev_E = -100;
   short _temp_Val = 0;
 
  __shared__ short sh_prev_E[32]; // one such element is required per warp
@@ -1121,6 +1170,18 @@ gpu_bsw::sequence_aa_kernel(char* seqA_array, char* seqB_array, unsigned* prefix
   for(int diag = 0; diag < lengthSeqA + lengthSeqB - 1; diag++)
   {  // iterate for the number of anti-diagonals
 
+      unsigned short diagId    = i + j;
+      unsigned short locOffset = 0;
+      if(diagId < maxSize + 1) 
+      {
+          locOffset = j;
+      }
+      else
+      {
+        unsigned short myOff = diagId - maxSize;
+        locOffset            = j - myOff;
+      }
+
       is_valid = is_valid - (diag < minSize || diag >= maxSize); //move the pointer to left by 1 if cnd true
 
        _temp_Val = _prev_H; // value exchange happens here to setup registers for next iteration
@@ -1133,13 +1194,13 @@ gpu_bsw::sequence_aa_kernel(char* seqA_array, char* seqB_array, unsigned* prefix
       _prev_E = _curr_E;
       _curr_E = _prev_prev_E;
       _prev_prev_E = _temp_Val;
-      _curr_E = 0;
+      _curr_E = -100;
 
       _temp_Val = _prev_F;
       _prev_F = _curr_F;
       _curr_F = _prev_prev_F;
       _prev_prev_F = _temp_Val;
-      _curr_F = 0;
+      _curr_F = -100;
 
 
       if(laneId == 31)
@@ -1186,7 +1247,30 @@ gpu_bsw::sequence_aa_kernel(char* seqA_array, char* seqB_array, unsigned* prefix
             heVal = 0;
          }
         _curr_F = (fVal > hfVal) ? fVal : hfVal;
+
+        if (fVal > hfVal){
+                //F_ptr[diagOffset[diagId] + locOffset] = '|'; //==> translated to 0000 0001
+                //H_ptr[diagOffset[diagId] + locOffset] =  H_ptr[diagOffset[diagId] + locOffset] | 1;
+                H_temp = H_temp | 1;
+        } else {
+                //F_ptr[diagOffset[diagId] + locOffset] = 'H';
+                //H_ptr[diagOffset[diagId] + locOffset] =  H_ptr[diagOffset[diagId] + locOffset] & (~1);
+                H_temp = H_temp & (~1);
+        }
+
         _curr_E = (eVal > heVal) ? eVal : heVal;
+
+        if (j!=0){
+            if (eVal > heVal) {
+              //E_ptr[diagOffset[diagId] + locOffset] = '-';
+              //H_ptr[diagOffset[diagId] + locOffset] =  H_ptr[diagOffset[diagId] + locOffset] | 2;
+              H_temp = H_temp | 2;
+            } else {
+              //E_ptr[diagOffset[diagId] + locOffset] = 'H';
+              //H_ptr[diagOffset[diagId] + locOffset] =  H_ptr[diagOffset[diagId] + locOffset] & (~2);
+              H_temp = H_temp & (~2);
+            }
+        }
 
         short testShufll = __shfl_sync(mask, _prev_prev_H, laneId - 1, 32);
         short final_prev_prev_H = 0;
@@ -1202,7 +1286,7 @@ gpu_bsw::sequence_aa_kernel(char* seqA_array, char* seqB_array, unsigned* prefix
 
         if(warpId == 0 && laneId == 0) final_prev_prev_H = 0;
 
-        short mat_index_q = sh_aa_encoding[(int)longer_seq[i-1]];//encoding_matrix
+        short mat_index_q = sh_aa_encoding[(int)longer_seq[i]];//encoding_matrix
         short mat_index_r = sh_aa_encoding[(int)myColumnChar];
 
         short add_score = sh_aa_scoring[mat_index_q*24 + mat_index_r]; // doesnt really matter in what order these indices are used, since the scoring table is symmetrical
@@ -1210,6 +1294,34 @@ gpu_bsw::sequence_aa_kernel(char* seqA_array, char* seqB_array, unsigned* prefix
         short diag_score = final_prev_prev_H + add_score;
 
         _curr_H = findMaxFour(diag_score, _curr_F, _curr_E, 0, &ind);
+
+        if (ind == 0) {
+                //H_ptr[diagOffset[diagId] + locOffset] = '\\';
+                //H_ptr[diagOffset[diagId] + locOffset] =  H_ptr[diagOffset[diagId] + locOffset] | 4;
+                //H_ptr[diagOffset[diagId] + locOffset] =  H_ptr[diagOffset[diagId] + locOffset] | 8;
+                H_temp = H_temp | 4;
+                H_temp = H_temp | 8;
+        } else if (ind == 1) {
+                //H_ptr[diagOffset[diagId] + locOffset] = '|'; 
+                //H_ptr[diagOffset[diagId] + locOffset] =  H_ptr[diagOffset[diagId] + locOffset] & (~4);
+                //H_ptr[diagOffset[diagId] + locOffset] =  H_ptr[diagOffset[diagId] + locOffset] | 8; 
+                H_temp = H_temp & (~4);
+                H_temp = H_temp | 8;           
+        } else if (ind == 2) {
+                //H_ptr[diagOffset[diagId] + locOffset] = '-'; 
+                //H_ptr[diagOffset[diagId] + locOffset] =  H_ptr[diagOffset[diagId] + locOffset] & (~8);
+                //H_ptr[diagOffset[diagId] + locOffset] =  H_ptr[diagOffset[diagId] + locOffset] | 4;
+                H_temp = H_temp & (~8);
+                H_temp = H_temp | 4;
+        } else {
+                //H_ptr[diagOffset[diagId] + locOffset] = '*';
+                //H_ptr[diagOffset[diagId] + locOffset] =  H_ptr[diagOffset[diagId] + locOffset] & (~8);
+                //H_ptr[diagOffset[diagId] + locOffset] =  H_ptr[diagOffset[diagId] + locOffset] & (~4);
+                H_temp = H_temp & (~8);
+                H_temp = H_temp & (~4);
+        }
+        H_ptr[diagOffset[diagId] + locOffset] =  H_temp;
+
         thread_max_i = (thread_max >= _curr_H) ? thread_max_i : i;
         thread_max_j = (thread_max >= _curr_H) ? thread_max_j : thread_Id + 1;
         thread_max   = (thread_max >= _curr_H) ? thread_max : _curr_H;
@@ -1226,14 +1338,15 @@ gpu_bsw::sequence_aa_kernel(char* seqA_array, char* seqB_array, unsigned* prefix
 
   if(thread_Id == 0)
   {
-
+      short current_i = thread_max_i;
+      short current_j = thread_max_j;      
 
       if(lengthSeqA < lengthSeqB)
       {
         seqB_align_end[block_Id] = thread_max_i;
         seqA_align_end[block_Id] = thread_max_j;
         top_scores[block_Id] = thread_max;
-    }
+      }
       else
       {
       seqA_align_end[block_Id] = thread_max_i;
@@ -1241,239 +1354,26 @@ gpu_bsw::sequence_aa_kernel(char* seqA_array, char* seqB_array, unsigned* prefix
       top_scores[block_Id] = thread_max;
       }
 
+      unsigned short diagId    = current_i + current_j;
+      unsigned short locOffset = 0;
+
+      if(diagId < maxSize + 1)
+      {
+          locOffset = current_j;
+      } else {
+          unsigned short myOff2 = diagId - maxSize;
+          locOffset     = current_j - myOff2;
+      }
+        //printf("diagId = %d, locOffset = %d, diagOffset[diagId] + locOffset = %d\n", diagId, locOffset,diagOffset[diagId] + locOffset );
+        //printf("H_ptr[] = %c\n", H_ptr[diagOffset[diagId] + locOffset]);
+      gpu_bsw::traceBack(current_i, current_j, seqA_array, seqB_array, prefix_lengthA, 
+                    prefix_lengthB, seqA_align_begin, seqA_align_end,
+                    seqB_align_begin, seqB_align_end, maxMatrixSize, maxCIGAR,
+                    longCIGAR, CIGAR, H_ptr, diagOffset);
+
+
   }
+  __syncthreads();
 }
 
-__global__ void
-gpu_bsw::sequence_aa_reverse(char* seqA_array, char* seqB_array, unsigned* prefix_lengthA,
-                    unsigned* prefix_lengthB, short* seqA_align_begin, short* seqA_align_end,
-                    short* seqB_align_begin, short* seqB_align_end, short* top_scores, short startGap, short extendGap, short* scoring_matrix, short* encoding_matrix){
-
-      int block_Id  = blockIdx.x;
-      int thread_Id = threadIdx.x;
-      short laneId = threadIdx.x%32;
-      short warpId = threadIdx.x/32;
-      // local pointers
-      char*    seqA;
-      char*    seqB;
-
-      extern __shared__ char is_valid_array[];
-      char*                  is_valid = &is_valid_array[0];
-      char* longer_seq;
-
-  // setting up block local sequences and their lengths.
-      if(block_Id == 0)
-      {
-          seqA       = seqA_array;
-          seqB       = seqB_array;
-      }
-      else
-      {
-          seqA       = seqA_array + prefix_lengthA[block_Id - 1];
-          seqB       = seqB_array + prefix_lengthB[block_Id - 1];
-      }
-      int newlengthSeqA = seqA_align_end[block_Id];
-      int newlengthSeqB = seqB_align_end[block_Id];
-      unsigned maxSize = newlengthSeqA > newlengthSeqB ? newlengthSeqA : newlengthSeqB;
-      unsigned minSize = newlengthSeqA < newlengthSeqB ? newlengthSeqA : newlengthSeqB;
-      char myColumnChar;
-      is_valid = &is_valid_array[0]; //reset is_valid array for second iter
-      memset(is_valid, 0, minSize);
-      is_valid += minSize;
-      memset(is_valid, 1, minSize);
-      is_valid += minSize;
-      memset(is_valid, 0, minSize);
-      __syncthreads(); // this is required because shmem writes
-
-  //check if the new length of A is larger than B, if so then place the B string in registers and A in myLocString, make sure we dont do redundant copy by checking which string is located in myLocString before
-
-      if(newlengthSeqA < newlengthSeqB)
-      {
-        if(thread_Id < newlengthSeqA)
-        {
-          myColumnChar = seqA[(newlengthSeqA - 1) - thread_Id];  // read only once
-          longer_seq = seqB;
-          }
-      }
-      else
-      {
-        if(thread_Id < newlengthSeqB)
-        {
-         myColumnChar = seqB[(newlengthSeqB - 1) - thread_Id];
-           longer_seq = seqA;
-        }
-      }
-
-
-      __syncthreads(); // this is required  because sequence has been re-written in shmem
-
-
-      int   i            = 1;
-      int   j            = thread_Id;
-      short thread_max   = 0; // to maintain the thread max score
-      short thread_max_i = 0; // to maintain the DP coordinate i for the longer string
-      short thread_max_j = 0;// to maintain the DP cooirdinate j for the shorter string
-      int ind;
-
-    //initializing registers for storing diagonal values for three recent most diagonals (separate tables for
-    //H, E and F)
-      short _curr_H = 0, _curr_F = 0, _curr_E = 0;
-      short _prev_H = 0, _prev_F = 0, _prev_E = 0;
-      short _prev_prev_H = 0, _prev_prev_F = 0, _prev_prev_E = 0;
-      short _temp_Val = 0;
-
-     __shared__ short sh_prev_E[32]; // one such element is required per warp
-     __shared__ short sh_prev_H[32];
-     __shared__ short sh_prev_prev_H[32];
-
-     __shared__ short local_spill_prev_E[1024];// each threads local spill,
-     __shared__ short local_spill_prev_H[1024];
-     __shared__ short local_spill_prev_prev_H[1024];
-
-     __shared__ short sh_aa_encoding[ENCOD_MAT_SIZE];// length = 91
-     __shared__ short sh_aa_scoring[SCORE_MAT_SIZE];
-
-     int max_threads = blockDim.x;
-
-     for(int p = thread_Id; p < SCORE_MAT_SIZE; p+=max_threads){
-       sh_aa_scoring[p] = scoring_matrix[p];
-     }
-     for(int p = thread_Id; p < ENCOD_MAT_SIZE; p+=max_threads){
-       sh_aa_encoding[p] = encoding_matrix[p];
-     }
-
-
-      __syncthreads(); // this is required because shmem has been updated
-      for(int diag = 0; diag <  newlengthSeqA + newlengthSeqB - 1; diag++)
-      {
-        is_valid = is_valid - (diag < minSize || diag >= maxSize);
-
-        _temp_Val = _prev_H;
-      	_prev_H = _curr_H;
-      	_curr_H = _prev_prev_H;
-      	_prev_prev_H = _temp_Val;
-
-      	_curr_H = 0;
-
-
-        _temp_Val = _prev_E;
-        _prev_E = _curr_E;
-        _curr_E = _prev_prev_E;
-        _prev_prev_E = _temp_Val;
-        _curr_E = 0;
-
-        _temp_Val = _prev_F;
-        _prev_F = _curr_F;
-        _curr_F = _prev_prev_F;
-        _prev_prev_F = _temp_Val;
-      	_curr_F = 0;
-
-        if(laneId == 31)
-        {
-          sh_prev_E[warpId] = _prev_E;
-          sh_prev_H[warpId] = _prev_H;
-    		  sh_prev_prev_H[warpId] = _prev_prev_H;
-        }
-
-        if(diag>= maxSize)
-        { // if you are invalid in this iteration, spill your values to shmem
-          local_spill_prev_E[thread_Id] = _prev_E;
-          local_spill_prev_H[thread_Id] = _prev_H;
-          local_spill_prev_prev_H[thread_Id] = _prev_prev_H;
-        }
-
-        __syncthreads();
-
-        if(is_valid[thread_Id] && thread_Id < minSize)
-        {
-
-      	    unsigned mask  = __ballot_sync(__activemask(), (is_valid[thread_Id] &&( thread_Id < minSize)));
-
-
-      	    short fVal = _prev_F + extendGap;
-      	    short hfVal = _prev_H + startGap;
-      	    short valeShfl = __shfl_sync(mask, _prev_E, laneId- 1, 32);
-      	    short valheShfl = __shfl_sync(mask, _prev_H, laneId - 1, 32);
-
-            short eVal=0;
-            short heVal = 0;
-
-            if(diag >= maxSize)
-            {
-                eVal = local_spill_prev_E[thread_Id - 1] + extendGap;
-            }
-            else
-            {
-              eVal =((warpId !=0 && laneId == 0)?sh_prev_E[warpId-1]: valeShfl) + extendGap;
-            }
-
-            if(diag >= maxSize)
-            {
-                heVal = local_spill_prev_H[thread_Id - 1]+ startGap;
-            }
-            else
-            {
-              heVal =((warpId !=0 && laneId == 0)?sh_prev_H[warpId-1]:valheShfl) + startGap;
-            }
-
-            if(warpId == 0 && laneId == 0)
-            {
-              eVal = 0;
-              heVal = 0;
-            }
-            _curr_F = (fVal > hfVal) ? fVal : hfVal;
-        		_curr_E = (eVal > heVal) ? eVal : heVal;
-            short testShufll = __shfl_sync(mask, _prev_prev_H, laneId - 1, 32);
-      	    short final_prev_prev_H =0;
-
-            if(diag >= maxSize)
-             {
-               final_prev_prev_H = local_spill_prev_prev_H[thread_Id - 1];
-             }
-            else
-             {
-               final_prev_prev_H =(warpId !=0 && laneId == 0)?sh_prev_prev_H[warpId-1]:testShufll;
-             }
-
-            if(warpId == 0 && laneId == 0) final_prev_prev_H = 0;
-
-            short mat_index_q = sh_aa_encoding[(int)longer_seq[maxSize-i]];
-            short mat_index_r = sh_aa_encoding[(int)myColumnChar];
-            short add_score = sh_aa_scoring[mat_index_q*24 + mat_index_r]; // doesnt really matter in what order these indices are used, since the scoring table is symmetrical
-
-            short diag_score = final_prev_prev_H + add_score;
-            _curr_H = findMaxFour(diag_score, _curr_F, _curr_E, 0, &ind);
-
-            thread_max_i = (thread_max >= _curr_H) ? thread_max_i : maxSize - i ;//i;// begin_A (longer string)
-            thread_max_j = (thread_max >= _curr_H) ? thread_max_j : minSize - thread_Id -1; // begin_B (shorter string)
-            thread_max   = (thread_max >= _curr_H) ? thread_max : _curr_H;
-            i++;
-
-        }
-          __syncthreads();
-
-        }
-        __syncthreads();
-
-
-
-
-        thread_max = blockShuffleReduce_with_index_reverse(thread_max, thread_max_i, thread_max_j,
-                                        minSize);  // thread 0 will have the correct values
-        if(thread_Id == 0)
-        {
-          if(newlengthSeqA < newlengthSeqB)
-          {
-            seqB_align_begin[block_Id] = /*newlengthSeqB - */(thread_max_i);
-            seqA_align_begin[block_Id] = /*newlengthSeqA */ (thread_max_j);
-          }
-          else
-          {
-            seqA_align_begin[block_Id] = /*newlengthSeqA - */(thread_max_i);
-            seqB_align_begin[block_Id] = /*newlengthSeqB -*/ (thread_max_j);
-          }
-        }
-        __syncthreads();
-
-}
 
