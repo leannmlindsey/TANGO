@@ -6,6 +6,8 @@
 #include <thrust/device_vector.h>
 #include <thrust/host_vector.h>
 #include <thrust/scan.h>
+#include <cmath>
+#include <string>
 
 size_t gpu_bsw_driver::get_tot_gpu_mem(int id) {
   cudaDeviceProp prop;
@@ -519,3 +521,4 @@ gpu_bsw_driver::kernel_driver_aa(std::vector<std::string> reads, std::vector<std
     std::chrono::duration<double> diff = end - start;
     std::cout << "Total Alignments:"<<totalAlignments<<"\n"<<"Max Reference Size:"<<maxContigSize<<"\n"<<"Max Query Size:"<<maxReadSize<<"\n" <<"Total Execution Time (seconds):"<< diff.count() <<std::endl;
 }// end of amino acids kernel
+

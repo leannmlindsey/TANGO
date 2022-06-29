@@ -250,7 +250,6 @@ void dnaSampleRun(string refFile, string queFile, string out_file){
   //cout <<"Total Cells:"<<total_cells<<endl;
 
   //gpu_bsw_driver::verificationTest(resultFile, results_test.g_alAbeg, results_test.g_alBbeg, results_test.g_alAend, results_test.g_alBend);
-
 }
 
 int

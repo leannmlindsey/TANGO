@@ -392,32 +392,28 @@ gpu_bsw::traceBack(short current_i, short current_j, char* seqA_array, char* seq
         //printf("BLOCK #%d, first H_ptr[] = %c, H_ptr[0] = %c\n", myId, H_ptr[diagOffset[current_diagId] + current_locOffset], H_ptr[0]);                
         
     //}
-    
+    char temp_H;
+    temp_H = H_ptr[diagOffset[current_diagId] + current_locOffset];
     short next_i;
     short next_j;
     short last_i = 0;
     short last_j = 0;
     //printf("BLOCK #%d, H_ptr[] = %c\n", myId, H_ptr[diagOffset[current_diagId] + current_locOffset]);  
-    switch (H_ptr[diagOffset[current_diagId] + current_locOffset] & 0b00001100){
+    switch (temp_H & 0b00001100){
         case 0b00001100 :
-            //printf("binary is 0b00001100, decimal is %d\n",H_ptr[diagOffset[current_diagId] + current_locOffset] & 0b00001100);
             next_i = current_i - 1;
             next_j = current_j - 1;
             break;
         case 0b00001000 :
-            //printf("binary is 0b00001000, decimal is %d\n",H_ptr[diagOffset[current_diagId] + current_locOffset] & 0b00001100);
             next_i = current_i - 1;
             next_j = current_j;
             break;
         case 0b00000100:
-            //printf("binary is 0b00000100, decimal is %d\n",H_ptr[diagOffset[current_diagId] + current_locOffset] & 0b00001100);
             next_i = current_i;
             next_j = current_j - 1;
             break;
-        default:
+        //default:
             //printf("default, the char is not \ | or - ********* char is : %c\n", H_ptr[diagOffset[current_diagId] + current_locOffset] & 0b00001100);
-        
-
     }
 
     short first_j = current_j; //recording the first_j, first_i values for use in calculating S
@@ -430,6 +426,7 @@ gpu_bsw::traceBack(short current_i, short current_j, char* seqA_array, char* seq
    
     while(((current_i != next_i) || (current_j != next_j)) && (next_j != 0) && (next_i != 0))
     {   
+        temp_H = H_ptr[diagOffset[current_diagId] + current_locOffset];
        //printf("in WHILE loop, cur_i=%d, cur_j=%d\n",current_i, current_j);
        //if(myId==0 && myTId ==0) {
             //for (int i = 0; i <= counter; i++){
@@ -444,7 +441,7 @@ gpu_bsw::traceBack(short current_i, short current_j, char* seqA_array, char* seq
             //printf("BLOCK #%d, E_ptr[] = %c\n", myId, E_ptr[diagOffset[current_diagId] + current_locOffset]); 
             //printf("JUST ENTERED E, E_ptr = %d\n", E_ptr[diagOffset[current_diagId] + current_locOffset]);
             //printf("BLOCK #%d, E_ptr[] = %c, current_diagId = %d, current_locOffset = %d, current_i = %d, current_j = %d, maxSize = %d\n", myId, E_ptr[diagOffset[current_diagId] + current_locOffset],current_diagId, current_locOffset, current_i, current_j, maxSize); 
-            if (H_ptr[diagOffset[current_diagId] + current_locOffset] & 0b00000010 == 0b00000000) {
+            if (temp_H & 0b00000010 == 0b00000000) {
                 gapOpen = 1;
             }
             if (gapOpen == 0) {
@@ -470,7 +467,7 @@ gpu_bsw::traceBack(short current_i, short current_j, char* seqA_array, char* seq
             }
         } else if (next_j == current_j) {
             //printf("BLOCK #%d, F_ptr[] = %c\n", myId, F_ptr[diagOffset[current_diagId] + current_locOffset]); 
-            if (H_ptr[diagOffset[current_diagId] + current_locOffset] & 0b00000001 == 0b00000000) {
+            if (temp_H & 0b00000001 == 0b00000000) {
                 gapOpen = 1;
             }
             if (gapOpen == 0) 
@@ -533,10 +530,7 @@ gpu_bsw::traceBack(short current_i, short current_j, char* seqA_array, char* seq
         }
 
         if (matrix == 'E'){
-            //printf("the matrix is E & ");
-            //printf("the next pointer is: %c\n",E_ptr[diagOffset[current_diagId] + current_locOffset]);
-            //printf("BLOCK #%d, E_ptr[] = %c\n", myId, E_ptr[diagOffset[current_diagId] + current_locOffset]); 
-            switch (H_ptr[diagOffset[current_diagId] + current_locOffset] & 0b00000010){
+            switch (temp_H & 0b00000010){
                 case 0b00000010 :
                     next_i = current_i;
                     next_j = current_j - 1;
@@ -549,10 +543,7 @@ gpu_bsw::traceBack(short current_i, short current_j, char* seqA_array, char* seq
                     break;
             }
         } else if (matrix == 'F'){
-            //printf("the matrix is F & ");
-            //printf("the next pointer is: %c\n",F_ptr[diagOffset[current_diagId] + current_locOffset]);
-            //printf("BLOCK #%d, F_ptr[] = %c\n", myId, F_ptr[diagOffset[current_diagId] + current_locOffset]); 
-            switch (H_ptr[diagOffset[current_diagId] + current_locOffset] & 0b00000001){
+            switch (temp_H & 0b00000001){
                 case 0b00000001 :
                     next_i = current_i - 1;
                     next_j = current_j;
@@ -565,10 +556,7 @@ gpu_bsw::traceBack(short current_i, short current_j, char* seqA_array, char* seq
                     break;
             }
         } else if (matrix == 'H') { 
-            //printf("the matrix is H & ");
-            //printf("the next pointer is: %c\n",H_ptr[diagOffset[current_diagId] + current_locOffset]);
-            //printf("BLOCK #%d, H_ptr[] = %c, current_diagId = %d, current_locOffset = %d, current_i = %d, current_j = %d, maxSize = %d\n", myId, H_ptr[diagOffset[current_diagId] + current_locOffset],current_diagId, current_locOffset, current_i, current_j, maxSize); 
-            switch (H_ptr[diagOffset[current_diagId] + current_locOffset] & 0b00001100){
+            switch (temp_H & 0b00001100){
                 case 0b00001100 :
                     next_i = current_i - 1;
                     next_j = current_j - 1;
@@ -683,7 +671,7 @@ gpu_bsw::sequence_dna_kernel_traceback(char* seqA_array, char* seqB_array, unsig
 
     char myColumnChar;
     // the shorter of the two strings is stored in thread registers
-    char H_temp = 0;
+    char H_temp = 0;  //set all bits to 0 initially
 
     if(lengthSeqA < lengthSeqB)
     {
@@ -743,7 +731,7 @@ gpu_bsw::sequence_dna_kernel_traceback(char* seqA_array, char* seqB_array, unsig
 
   //initializing registers for storing diagonal values for three recent most diagonals (separate tables for
   //H, E and F)
-    short _curr_H = 0, _curr_F = -100, _curr_E = -100;
+    short _curr_H = 0, _curr_F = -100, _curr_E = -100; //-100 acts as neg infinity
     short _prev_H = 0, _prev_F = -100, _prev_E = -100;
     short _prev_prev_H = 0, _prev_prev_F = -100, _prev_prev_E = -100;
     short _temp_Val = 0;
@@ -845,25 +833,17 @@ gpu_bsw::sequence_dna_kernel_traceback(char* seqA_array, char* seqB_array, unsig
            }
       		_curr_F = (fVal > hfVal) ? fVal : hfVal;
           
-          if (fVal > hfVal){
-                //F_ptr[diagOffset[diagId] + locOffset] = '|'; //==> translated to 0000 0001
-                //H_ptr[diagOffset[diagId] + locOffset] =  H_ptr[diagOffset[diagId] + locOffset] | 1;
+          if (fVal > hfVal){ //record F value in H_temp 0b00000001
                 H_temp = H_temp | 1;
-          } else {
-                //F_ptr[diagOffset[diagId] + locOffset] = 'H';
-                //H_ptr[diagOffset[diagId] + locOffset] =  H_ptr[diagOffset[diagId] + locOffset] & (~1);
+          } else { //record F value in H_ptr 0b00000000
                 H_temp = H_temp & (~1);
           }
 
       		_curr_E = (eVal > heVal) ? eVal : heVal;
           if (j!=0){
-            if (eVal > heVal) {
-              //E_ptr[diagOffset[diagId] + locOffset] = '-';
-              //H_ptr[diagOffset[diagId] + locOffset] =  H_ptr[diagOffset[diagId] + locOffset] | 2;
+            if (eVal > heVal) { //record E value in H_temp 0b00000010
               H_temp = H_temp | 2;
-            } else {
-              //E_ptr[diagOffset[diagId] + locOffset] = 'H';
-              //H_ptr[diagOffset[diagId] + locOffset] =  H_ptr[diagOffset[diagId] + locOffset] & (~2);
+            } else { //record E value in H_temp 0b00000000
               H_temp = H_temp & (~2);
             }
           }
@@ -881,37 +861,20 @@ gpu_bsw::sequence_dna_kernel_traceback(char* seqA_array, char* seqB_array, unsig
           if(warpId == 0 && laneId == 0) final_prev_prev_H = 0;
           short diag_score = final_prev_prev_H + ((longer_seq[i] == myColumnChar) ? matchScore : misMatchScore);
           _curr_H = findMaxFour(diag_score, _curr_F, _curr_E, 0, &ind);
-          //if (block_Id == 0 && thread_Id == 149) {
-            //printf("BLOCK #%d, THREAD #%d, diagId = %d, locOffset = %d, diagOffset[diagId] + locOffset = %d\n", block_Id, thread_Id, diagId, locOffset,diagOffset[diagId] + locOffset );
-            //printf("BLOCK #%d, THREAD #%d, H_ptr[] = %c, j=%d, i=%d\n", block_Id, thread_Id, H_ptr[diagOffset[diagId] + locOffset], j, i);
-            //printf("BLOCK #%d, THREAD #%d, diag_score = %d, _curr_F = %d, _curr_E = %d\n", diag_score, _curr_F, _curr_E);
-          //}
-          if (ind == 0) {
-                //H_ptr[diagOffset[diagId] + locOffset] = '\\';
-                //H_ptr[diagOffset[diagId] + locOffset] =  H_ptr[diagOffset[diagId] + locOffset] | 4;
-                //H_ptr[diagOffset[diagId] + locOffset] =  H_ptr[diagOffset[diagId] + locOffset] | 8;
-                H_temp = H_temp | 4;
-                H_temp = H_temp | 8;
-            } else if (ind == 1) {
-                //H_ptr[diagOffset[diagId] + locOffset] = '|'; 
-                //H_ptr[diagOffset[diagId] + locOffset] =  H_ptr[diagOffset[diagId] + locOffset] & (~4);
-                //H_ptr[diagOffset[diagId] + locOffset] =  H_ptr[diagOffset[diagId] + locOffset] | 8; 
-                H_temp = H_temp & (~4);
-                H_temp = H_temp | 8;           
-            } else if (ind == 2) {
-                //H_ptr[diagOffset[diagId] + locOffset] = '-'; 
-                //H_ptr[diagOffset[diagId] + locOffset] =  H_ptr[diagOffset[diagId] + locOffset] & (~8);
-                //H_ptr[diagOffset[diagId] + locOffset] =  H_ptr[diagOffset[diagId] + locOffset] | 4;
-                H_temp = H_temp & (~8);
-                H_temp = H_temp | 4;
-            } else {
-                //H_ptr[diagOffset[diagId] + locOffset] = '*';
-                //H_ptr[diagOffset[diagId] + locOffset] =  H_ptr[diagOffset[diagId] + locOffset] & (~8);
-                //H_ptr[diagOffset[diagId] + locOffset] =  H_ptr[diagOffset[diagId] + locOffset] & (~4);
-                H_temp = H_temp & (~8);
-                H_temp = H_temp & (~4);
+          if (ind == 0) { // diagonal cell is max, set bits to 0b00001100
+                H_temp = H_temp | 4;     // set bit 0b00000100
+                H_temp = H_temp | 8;     // set bit 0b00001000
+            } else if (ind == 1) {       // left cell is max, set bits to 0b00001000
+                H_temp = H_temp & (~4);  // clear bit
+                H_temp = H_temp | 8;     // set bit 0b00001000
+            } else if (ind == 2) {       // top cell is max, set bits to 0b00000100
+                H_temp = H_temp & (~8);  //clear bit
+                H_temp = H_temp | 4;     // set bit 0b00000100
+            } else {                     // score is 0, set bits to 0b00000000
+                H_temp = H_temp & (~8);  //clear bit
+                H_temp = H_temp & (~4);  //clear bit
           }
-          H_ptr[diagOffset[diagId] + locOffset] =  H_temp;
+            H_ptr[diagOffset[diagId] + locOffset] =  H_temp;
           thread_max_i = (thread_max >= _curr_H) ? thread_max_i : i;
           thread_max_j = (thread_max >= _curr_H) ? thread_max_j : thread_Id;
           thread_max   = (thread_max >= _curr_H) ? thread_max : _curr_H;
@@ -919,7 +882,7 @@ gpu_bsw::sequence_dna_kernel_traceback(char* seqA_array, char* seqB_array, unsig
             //printf("i = %d, j = %d, _curr_H = %d, thread_max_i = %d, thread_max_j = %d, thread_max = %d\n",i, thread_Id, _curr_H, thread_max_i, thread_max_j, thread_max);
           i++;
        }
-      __syncthreads(); // why do I need this? commenting it out breaks it
+      __syncthreads(); 
     }
     __syncthreads();
 
@@ -1249,12 +1212,8 @@ gpu_bsw::sequence_aa_kernel_traceback(char* seqA_array, char* seqB_array, unsign
         _curr_F = (fVal > hfVal) ? fVal : hfVal;
 
         if (fVal > hfVal){
-                //F_ptr[diagOffset[diagId] + locOffset] = '|'; //==> translated to 0000 0001
-                //H_ptr[diagOffset[diagId] + locOffset] =  H_ptr[diagOffset[diagId] + locOffset] | 1;
                 H_temp = H_temp | 1;
         } else {
-                //F_ptr[diagOffset[diagId] + locOffset] = 'H';
-                //H_ptr[diagOffset[diagId] + locOffset] =  H_ptr[diagOffset[diagId] + locOffset] & (~1);
                 H_temp = H_temp & (~1);
         }
 
@@ -1262,12 +1221,8 @@ gpu_bsw::sequence_aa_kernel_traceback(char* seqA_array, char* seqB_array, unsign
 
         if (j!=0){
             if (eVal > heVal) {
-              //E_ptr[diagOffset[diagId] + locOffset] = '-';
-              //H_ptr[diagOffset[diagId] + locOffset] =  H_ptr[diagOffset[diagId] + locOffset] | 2;
               H_temp = H_temp | 2;
             } else {
-              //E_ptr[diagOffset[diagId] + locOffset] = 'H';
-              //H_ptr[diagOffset[diagId] + locOffset] =  H_ptr[diagOffset[diagId] + locOffset] & (~2);
               H_temp = H_temp & (~2);
             }
         }
@@ -1296,27 +1251,15 @@ gpu_bsw::sequence_aa_kernel_traceback(char* seqA_array, char* seqB_array, unsign
         _curr_H = findMaxFour(diag_score, _curr_F, _curr_E, 0, &ind);
 
         if (ind == 0) {
-                //H_ptr[diagOffset[diagId] + locOffset] = '\\';
-                //H_ptr[diagOffset[diagId] + locOffset] =  H_ptr[diagOffset[diagId] + locOffset] | 4;
-                //H_ptr[diagOffset[diagId] + locOffset] =  H_ptr[diagOffset[diagId] + locOffset] | 8;
                 H_temp = H_temp | 4;
                 H_temp = H_temp | 8;
         } else if (ind == 1) {
-                //H_ptr[diagOffset[diagId] + locOffset] = '|'; 
-                //H_ptr[diagOffset[diagId] + locOffset] =  H_ptr[diagOffset[diagId] + locOffset] & (~4);
-                //H_ptr[diagOffset[diagId] + locOffset] =  H_ptr[diagOffset[diagId] + locOffset] | 8; 
                 H_temp = H_temp & (~4);
                 H_temp = H_temp | 8;           
         } else if (ind == 2) {
-                //H_ptr[diagOffset[diagId] + locOffset] = '-'; 
-                //H_ptr[diagOffset[diagId] + locOffset] =  H_ptr[diagOffset[diagId] + locOffset] & (~8);
-                //H_ptr[diagOffset[diagId] + locOffset] =  H_ptr[diagOffset[diagId] + locOffset] | 4;
                 H_temp = H_temp & (~8);
                 H_temp = H_temp | 4;
         } else {
-                //H_ptr[diagOffset[diagId] + locOffset] = '*';
-                //H_ptr[diagOffset[diagId] + locOffset] =  H_ptr[diagOffset[diagId] + locOffset] & (~8);
-                //H_ptr[diagOffset[diagId] + locOffset] =  H_ptr[diagOffset[diagId] + locOffset] & (~4);
                 H_temp = H_temp & (~8);
                 H_temp = H_temp & (~4);
         }
@@ -1328,7 +1271,7 @@ gpu_bsw::sequence_aa_kernel_traceback(char* seqA_array, char* seqB_array, unsign
         i++;
      }
 
-    __syncthreads(); // why do I need this? commenting it out breaks it
+    __syncthreads(); 
 
   }
   __syncthreads();
