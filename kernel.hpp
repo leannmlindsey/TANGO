@@ -39,19 +39,19 @@ createCIGAR(char* longCIGAR, char* CIGAR, int maxCIGAR,
         bool seqBShorter, short first_j, short last_j, short first_i, short last_i); 
 
 __device__ void
-printMatrix(char* H_ptr, char* seqA, char* seqB, int lengthSeqA, int lengthSeqB, unsigned short* diagOffset, unsigned maxSize);
+printMatrix(char* H_ptr, short* I, char* seqA, char* seqB, int lengthSeqA, int lengthSeqB, unsigned long* diagOffset, unsigned maxSize);
 
 __device__ void
 traceBack(short current_i, short current_j, char* seqA_array, char* seqB_array, unsigned* prefix_lengthA, 
                     unsigned* prefix_lengthB, short* seqA_align_begin, short* seqA_align_end,
                     short* seqB_align_begin, short* seqB_align_end, unsigned const maxMatrixSize, int maxCIGAR,
-                    char* longCIGAR, char* CIGAR, char* H_ptr, unsigned short* diagOffset);
+                    char* longCIGAR, char* CIGAR, char* H_ptr, unsigned long* diagOffset);
 
 __global__ void
 sequence_dna_kernel_traceback(char* seqA_array, char* seqB_array, unsigned* prefix_lengthA,
                     unsigned* prefix_lengthB, short* seqA_align_begin, short* seqA_align_end,
                     short* seqB_align_begin, short* seqB_align_end, short* top_scores, 
-                    char* longCIGAR_array, char* CIGAR_array, char* H_ptr_array, 
+                    char* longCIGAR_array, char* CIGAR_array, char* H_ptr_array, short* I_ptr_array,
                     int maxCIGAR, unsigned const maxMatrixSize,
                     short matchScore, short misMatchScore, short startGap, short extendGap);
 

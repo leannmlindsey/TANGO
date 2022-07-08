@@ -192,8 +192,16 @@ __device__ __host__ short
     array[2] = third;
     array[3] = fourth;
 
-    short max = array[0];
-    *ind = 0;
+    short max;
+
+    // to make sure that if the H score is 0, then * will be put in the H_ptr matrix for correct termination of traceback 
+    if (array[0] > 0 ) {
+      max = array[0];
+      *ind = 0;
+    } else {
+      max = 0;
+      *ind = 3;
+    }
 
     for (int i=1; i<4; i++){
       if (array[i] > max){
@@ -296,13 +304,14 @@ gpu_bsw::createCIGAR(char* longCIGAR, char* CIGAR, int maxCIGAR,
 }
 
 __device__ void
-gpu_bsw::printMatrix(char* H_ptr, char* seqA, char* seqB, int lengthSeqA, int lengthSeqB, unsigned short* diagOffset, unsigned maxSize){
-
+gpu_bsw::printMatrix(char* H_ptr, short* I, char* seqA, char* seqB, int lengthSeqA, int lengthSeqB, unsigned long* diagOffset, unsigned maxSize){
+    //printf("AFTER TRACEBACK: I=%d\n", I[diagOffset[27]+9]);
     //put smaller sequence across the top and label 
     char* topSeq;
     char* sideSeq;
     int topSeqLength;
     int sideSeqLength;
+    //printf("lengthSeqA = %d, length SeqB = %d, maxSize = %u\n", lengthSeqA, lengthSeqB, maxSize);
 
     if (lengthSeqA < lengthSeqB){
         topSeq = seqA;
@@ -317,10 +326,61 @@ gpu_bsw::printMatrix(char* H_ptr, char* seqA, char* seqB, int lengthSeqA, int le
     }
    
 
-                char temp_H;
+            //     char temp_H;
+            //     printf("FULL POINTER MATRIX\n");
+                 int S_current_diagId    = 0;
+                 int S_current_locOffset = 0;
+            //     printf("-\t-\t");
+            //     for (int sj = 0; sj < topSeqLength; sj++){
+            //         printf("%d\t", sj); //indexes printed across the top 
+            //     }
+            //     printf("\n-\t-\t");
+            //     for (int sj = 0; sj < topSeqLength; sj++){
+            //         printf("%c\t", topSeq[sj]); //query sequence printed across the top 
+            //     }
+            //     printf("\n");
+            //     for (int si = 0; si < sideSeqLength + 1; si++){
+            //         printf("%d\t%c\t", si, sideSeq[si]); //reference sequence & indexes printed down the side 
+                  
+            //         for (int sj =0; sj < topSeqLength + 1; sj++){
+                       
+            //             S_current_diagId = si + sj;
+
+            //             if(S_current_diagId < maxSize + 1){
+            //                 S_current_locOffset = sj;
+            //             } else {
+            //                 unsigned short S_myOff = S_current_diagId - maxSize;
+            //                 S_current_locOffset = sj - S_myOff;
+            //             }
+            //             //printf("%d\t",I_score[diagOffset[S_current_diagId] + S_current_locOffset]);
+            //             //printf("%d\t",H_ptr[diagOffset[S_current_diagId] + S_current_locOffset]);
+            //             temp_H = H_ptr[diagOffset[S_current_diagId] + S_current_locOffset];
+            //             switch (temp_H & 0b00001100){
+            //                 case 0b00001100 :
+            //                     printf("\\\t");
+            //                     break;
+            //                 case 0b00001000 :
+            //                     printf("|\t");
+            //                     break;
+            //                 case 0b00000100 :
+            //                     printf("-\t");
+            //                     break;
+            //                 case 0b00000000 :
+            //                     printf("*\t");
+            //                     break;
+
+
+            //             }
+                  
+            //     }
+            //     printf("\n");
+            // }
+
+
+             int score;
                 printf("FULL SCORING MATRIX\n");
-                int S_current_diagId    = 0;
-                int S_current_locOffset = 0;
+                S_current_diagId    = 0;
+                S_current_locOffset = 0;
                 printf("-\t-\t");
                 for (int sj = 0; sj < topSeqLength; sj++){
                     printf("%d\t", sj); //indexes printed across the top 
@@ -336,6 +396,7 @@ gpu_bsw::printMatrix(char* H_ptr, char* seqA, char* seqB, int lengthSeqA, int le
                     for (int sj =0; sj < topSeqLength + 1; sj++){
                        
                         S_current_diagId = si + sj;
+                        S_current_locOffset = 0;
 
                         if(S_current_diagId < maxSize + 1){
                             S_current_locOffset = sj;
@@ -343,29 +404,44 @@ gpu_bsw::printMatrix(char* H_ptr, char* seqA, char* seqB, int lengthSeqA, int le
                             unsigned short S_myOff = S_current_diagId - maxSize;
                             S_current_locOffset = sj - S_myOff;
                         }
+
+    // current_diagId    = current_i + current_j;
+    // current_locOffset = 0;
+    // if(current_diagId < maxSize + 1)
+    // {
+    //     current_locOffset = current_j;
+    // }
+    // else
+    // {
+    //     unsigned short myOff = current_diagId - maxSize;
+    //     current_locOffset    = current_j - myOff;
+    // }
+
+
+
                         //printf("%d\t",I_score[diagOffset[S_current_diagId] + S_current_locOffset]);
                         //printf("%d\t",H_ptr[diagOffset[S_current_diagId] + S_current_locOffset]);
-                        temp_H = H_ptr[diagOffset[S_current_diagId] + S_current_locOffset];
-                        switch (temp_H & 0b00001100){
-                            case 0b00001100 :
-                                printf("\\\t");
-                                break;
-                            case 0b00001000 :
-                                printf("|\t");
-                                break;
-                            case 0b00000100 :
-                                printf("-\t");
-                                break;
-                            case 0b00000000 :
-                                printf("*\t");
-                                break;
+                        score = I[diagOffset[S_current_diagId] + S_current_locOffset];
+                        printf("%d\t",score);
 
-
-                        }
-                  
+                    }
+                  printf("\n");
                 }
-                printf("\n");
-            }
+                
+                for (int r = 0; r< 579; r++){
+                  
+                   short test_diagId = r + 9;
+                   short test_locOffset = 0;
+
+                   if(test_diagId < maxSize + 1){
+                      test_locOffset = 9;
+                    } else {
+                      unsigned short test_myOff = test_diagId - maxSize;
+                      test_locOffset = 9 - test_myOff;
+                    }
+                    //printf("reading _curr_H = %d, i = %d, j = %d, diagId = %d, locOffset = %d, Dindex = %d, index = %d\n", 
+                      //I[diagOffset[test_diagId] + test_locOffset], r, 9, test_diagId, test_locOffset, diagOffset[test_diagId],diagOffset[test_diagId] + test_locOffset  );
+                }
 
 }
 
@@ -373,7 +449,7 @@ __device__ void
 gpu_bsw::traceBack(short current_i, short current_j, char* seqA_array, char* seqB_array, unsigned* prefix_lengthA, 
                     unsigned* prefix_lengthB, short* seqA_align_begin, short* seqA_align_end,
                     short* seqB_align_begin, short* seqB_align_end, unsigned const maxMatrixSize, int maxCIGAR,
-                    char* longCIGAR, char* CIGAR, char* H_ptr, unsigned short* diagOffset)
+                    char* longCIGAR, char* CIGAR, char* H_ptr, unsigned long* diagOffset)
 {   //printf("current_i = %d, current_j = %d\n", current_i, current_j);
     
     int myId = blockIdx.x;
@@ -448,15 +524,15 @@ gpu_bsw::traceBack(short current_i, short current_j, char* seqA_array, char* seq
     {   
        temp_H = H_ptr[diagOffset[current_diagId] + current_locOffset];
        
-       if(myId==0 && myTId ==0) {
-            for (int i = 0; i <= counter; i++){
-                printf("%c",longCIGAR[i]);
-            }
-            printf("\n\n");
-        }  
-        if(myId==0 && myTId ==0) {
-            printf("current_i:%d, current_j:%d, next_i:%d, next_j:%d, %c , %c\n",current_i, current_j, next_i, next_j, shorterSeq[current_j], longerSeq[current_i]);
-        } 
+      //  if(myId==0 && myTId ==0) {
+      //       for (int i = 0; i <= counter; i++){
+      //           printf("%c",longCIGAR[i]);
+      //       }
+      //       printf("\n\n");
+      //   }  
+      //   if(myId==0 && myTId ==0) {
+      //       printf("current_i:%d, current_j:%d, next_i:%d, next_j:%d, %c , %c\n",current_i, current_j, next_i, next_j, shorterSeq[current_j], longerSeq[current_i]);
+      //   } 
 
         //write the current value into longCIGAR then assign next_i
         if (matrix == 'H') { 
@@ -546,10 +622,10 @@ __global__ void
 gpu_bsw::sequence_dna_kernel_traceback(char* seqA_array, char* seqB_array, unsigned* prefix_lengthA,
                     unsigned* prefix_lengthB, short* seqA_align_begin, short* seqA_align_end,
                     short* seqB_align_begin, short* seqB_align_end, short* top_scores, 
-                    char* longCIGAR_array, char* CIGAR_array, char* H_ptr_array, 
+                    char* longCIGAR_array, char* CIGAR_array, char* H_ptr_array, short* I_ptr_array,
                     int maxCIGAR, unsigned const maxMatrixSize, short matchScore, short misMatchScore, short startGap, short extendGap)
 {
-    
+   
     int block_Id  = blockIdx.x;
     int thread_Id = threadIdx.x;
     short laneId = threadIdx.x%32;
@@ -564,7 +640,8 @@ gpu_bsw::sequence_dna_kernel_traceback(char* seqA_array, char* seqB_array, unsig
     char* H_ptr;
     char* CIGAR, *longCIGAR;
     char test = 0;
-
+    short* I;
+     
     extern __shared__ char is_valid_array[];
     char*                  is_valid = &is_valid_array[0];
 
@@ -591,21 +668,26 @@ gpu_bsw::sequence_dna_kernel_traceback(char* seqA_array, char* seqB_array, unsig
     unsigned minSize = lengthSeqA < lengthSeqB ? lengthSeqA : lengthSeqB;
 
     H_ptr = H_ptr_array + (block_Id * maxMatrixSize);
+    I = I_ptr_array + (block_Id * maxMatrixSize);
 
     longCIGAR = longCIGAR_array + (block_Id * maxCIGAR);
     CIGAR = CIGAR_array + (block_Id * maxCIGAR);
 
+     
     char* longer_seq;
-    unsigned short* diagOffset = (unsigned short*) (&is_valid_array[3 * (minSize + 1) * sizeof(short)]);
+    unsigned long* diagOffset = (unsigned long*) (&is_valid_array[3 * (minSize + 1) * sizeof(long)]);
 
 
 // shared memory space for storing longer of the two strings
-
+      //if (block_Id == 0 && thread_Id == 0) {printf("before memset - is_valid = %p, diagOffset = %p\n",is_valid, diagOffset);}
     memset(is_valid, 0, minSize);
     is_valid += minSize;
+      //if (block_Id == 0 && thread_Id == 0) {printf("after memset 1 - is_valid = %p, diagOffset = %p\n",is_valid, diagOffset);}
     memset(is_valid, 1, minSize);
+      //if (block_Id == 0 && thread_Id == 0) {printf("after memset 2 - is_valid = %p, diagOffset = %p\n",is_valid, diagOffset);}
     is_valid += minSize;
     memset(is_valid, 0, minSize);
+      //if (block_Id == 0 && thread_Id == 0) {printf("after memset 3 - is_valid = %p, diagOffset = %p \n",is_valid, diagOffset);}
 
     char myColumnChar;
     // the shorter of the two strings is stored in thread registers
@@ -659,7 +741,7 @@ gpu_bsw::sequence_dna_kernel_traceback(char* seqA_array, char* seqB_array, unsig
                 diagOffset[locDiagId] = locSum;
             }
             diagOffset[lengthSeqA + lengthSeqB] = locSum + 2; //what is this for?
-            
+            //if (block_Id == 0 && thread_Id == 0) {printf("inside diagOffset loop - is_valid = %p, diagOffset = %p, writing at index = %d, locDiagId * 4 = %d\n",is_valid, diagOffset, locDiagId, locDiagId*4);}
             //printf("diag = %d, diagOffset = %d\n", locDiagId, diagOffset[locDiagId]);
         }
     }
@@ -800,6 +882,7 @@ gpu_bsw::sequence_dna_kernel_traceback(char* seqA_array, char* seqB_array, unsig
           short diag_score = final_prev_prev_H + ((longer_seq[i] == myColumnChar) ? matchScore : misMatchScore);
           _curr_H = findMaxFour(diag_score, _curr_F, _curr_E, 0, &ind);
           
+          
           if (ind == 0) { // diagonal cell is max, set bits to 0b00001100
                 H_temp = H_temp | 4;     // set bit 0b00000100
                 H_temp = H_temp | 8;     // set bit 0b00001000
@@ -817,7 +900,15 @@ gpu_bsw::sequence_dna_kernel_traceback(char* seqA_array, char* seqB_array, unsig
                 H_temp = H_temp & (~4);  //clear bit
                  //printf("*");
           }
-            H_ptr[diagOffset[diagId] + locOffset] =  H_temp;
+          H_ptr[diagOffset[diagId] + locOffset] =  H_temp;
+          I[diagOffset[diagId] + locOffset] = _curr_H;
+          //if (block_Id == 0 && thread_Id == 9) {
+            //printf("_curr_H = %d, I[index] = %d, i = %d, j = %d, diagId = %d, locOffset = %d, Dindex = %d, index = %d\n",_curr_H, I[diagOffset[diagId] + locOffset], i, j, diagId, locOffset, diagOffset[diagId],diagOffset[diagId] + locOffset );
+            //printf("IN LOOP TRACEBACK: i = %d, j = %d, I=%d\n", i, j, I[diagOffset[27]+9]);
+          //}
+          //I[diagOffset[diagId] + locOffset] = _curr_E;
+          //I[diagOffset[diagId] + locOffset] = _curr_F;
+      
           thread_max_i = (thread_max >= _curr_H) ? thread_max_i : i;
           thread_max_j = (thread_max >= _curr_H) ? thread_max_j : thread_Id;
           thread_max   = (thread_max >= _curr_H) ? thread_max : _curr_H;
@@ -853,9 +944,9 @@ gpu_bsw::sequence_dna_kernel_traceback(char* seqA_array, char* seqB_array, unsig
           seqB_align_end[block_Id] = thread_max_j;
           top_scores[block_Id] = thread_max;
         }
-
+        //printf("BEFORE TRACEBACK: I=%d\n", I[diagOffset[23]+9]);
         //printf("before calling TRACEBACK, BLOCK #%d, current_i = %d, current_j = %d\n", block_Id, current_i, current_j);
-        //gpu_bsw::printMatrix(H_ptr, seqA, seqB, lengthSeqA, lengthSeqB, diagOffset,maxSize);
+        //gpu_bsw::printMatrix(H_ptr, I, seqA, seqB, lengthSeqA, lengthSeqB, diagOffset,maxSize);
        
         unsigned short diagId    = current_i + current_j;
         unsigned short locOffset = 0;
@@ -927,14 +1018,18 @@ gpu_bsw::sequence_aa_kernel_traceback(char* seqA_array, char* seqB_array, unsign
   longCIGAR = longCIGAR_array + (block_Id * maxCIGAR);
   CIGAR = CIGAR_array + (block_Id * maxCIGAR);
 
-  unsigned short* diagOffset = (unsigned short*) (&is_valid_array[3 * (minSize + 1) * sizeof(short)]);
+  unsigned long* diagOffset = (unsigned long*) (&is_valid_array[3 * (minSize + 1) * sizeof(long)]);
 
+ 
 // shared memory space for storing longer of the two strings
   memset(is_valid, 0, minSize);
   is_valid += minSize;
+ 
   memset(is_valid, 1, minSize);
   is_valid += minSize;
+  
   memset(is_valid, 0, minSize);
+   
 
   char myColumnChar;
   char H_temp = 0;

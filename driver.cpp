@@ -198,11 +198,12 @@ gpu_bsw_driver::kernel_driver_dna(std::vector<std::string> reads, std::vector<st
             unsigned minSize = (maxReadSize < maxContigSize) ? maxReadSize : maxContigSize;
             unsigned maxSize = (maxReadSize > maxContigSize) ? maxReadSize : maxContigSize;
             //printf("minSize = %d, maxReadSize = %d, maxContigSize = %d \n", minSize, maxReadSize, maxContigSize);
-            unsigned totShmem = 6 * (minSize + 1) * sizeof(short) + 6 * minSize + (minSize & 1) + maxSize;
-            
+            //unsigned totShmem = 6 * (minSize + 1) * sizeof(short) + 6 * minSize + (minSize & 1) + maxSize;
+            unsigned totShmem = (3 * (minSize + 1) * sizeof(long)) + (minSize+1 + maxSize + 1) * sizeof(long);
             unsigned alignmentPad = 4 + (4 - totShmem % 4);
-            size_t   ShmemBytes = totShmem + alignmentPad + sizeof(int) * (maxContigSize + maxReadSize + 2 );
-            //printf("totShmem = %d, alignmentPad = %d, maxContigSize = %d, maxReadSize = %d, ShmemBytes = %d\n", totShmem, alignmentPad, maxContigSize, maxReadSize, ShmemBytes);
+            size_t   ShmemBytes = totShmem + alignmentPad + sizeof(long) * (maxContigSize + maxReadSize + 2 );
+             
+            printf("totShmem = %d, alignmentPad = %d, maxContigSize = %d, maxReadSize = %d, ShmemBytes = %d\n", totShmem, alignmentPad, maxContigSize, maxReadSize, ShmemBytes);
             if(ShmemBytes > 48000)
                 cudaFuncSetAttribute(gpu_bsw::sequence_dna_kernel_traceback, cudaFuncAttributeMaxDynamicSharedMemorySize, ShmemBytes);
 
@@ -213,18 +214,18 @@ gpu_bsw_driver::kernel_driver_dna(std::vector<std::string> reads, std::vector<st
             gpu_bsw::sequence_dna_kernel_traceback<<<sequences_per_stream, minSize, ShmemBytes, streams_cuda[0]>>>(
                 strA_d, strB_d, gpu_data.offset_ref_gpu, gpu_data.offset_query_gpu, gpu_data.ref_start_gpu,
                 gpu_data.ref_end_gpu, gpu_data.query_start_gpu, gpu_data.query_end_gpu, gpu_data.scores_gpu, 
-                gpu_data.longCIGAR_gpu, gpu_data.CIGAR_gpu, gpu_data.H_ptr_gpu,
+                gpu_data.longCIGAR_gpu, gpu_data.CIGAR_gpu, gpu_data.H_ptr_gpu, gpu_data.I_gpu,
                 maxCIGAR, maxMatrixSize, matchScore, misMatchScore, startGap, extendGap);
             cudaErrchk(cudaGetLastError());
 
             //printf("traceback kernel 2: parameters: seq_per_stream: %d, minsize = %d, ShmemBytes = %d, streams_cuda[1] = %d, maxCIGAR = %d\n", sequences_per_stream, minSize, ShmemBytes, streams_cuda[1], maxCIGAR);
-            // gpu_bsw::sequence_dna_kernel_traceback<<<sequences_per_stream + sequences_stream_leftover, minSize, ShmemBytes, streams_cuda[1]>>>(
-            //     strA_d + half_length_A, strB_d + half_length_B, gpu_data.offset_ref_gpu + sequences_per_stream, gpu_data.offset_query_gpu + sequences_per_stream,
-            //     gpu_data.ref_start_gpu + sequences_per_stream, gpu_data.ref_end_gpu + sequences_per_stream, gpu_data.query_start_gpu + sequences_per_stream, gpu_data.query_end_gpu + sequences_per_stream,
-            //     gpu_data.scores_gpu + sequences_per_stream, gpu_data.longCIGAR_gpu + sequences_per_stream * maxCIGAR, gpu_data.CIGAR_gpu + sequences_per_stream * maxCIGAR , 
-            //     gpu_data.H_ptr_gpu + sequences_per_stream * maxMatrixSize,
-            //     maxCIGAR, maxMatrixSize, matchScore, misMatchScore, startGap, extendGap);
-            // cudaErrchk(cudaGetLastError());
+            gpu_bsw::sequence_dna_kernel_traceback<<<sequences_per_stream + sequences_stream_leftover, minSize, ShmemBytes, streams_cuda[1]>>>(
+                strA_d + half_length_A, strB_d + half_length_B, gpu_data.offset_ref_gpu + sequences_per_stream, gpu_data.offset_query_gpu + sequences_per_stream,
+                gpu_data.ref_start_gpu + sequences_per_stream, gpu_data.ref_end_gpu + sequences_per_stream, gpu_data.query_start_gpu + sequences_per_stream, gpu_data.query_end_gpu + sequences_per_stream,
+                gpu_data.scores_gpu + sequences_per_stream, gpu_data.longCIGAR_gpu + sequences_per_stream * maxCIGAR, gpu_data.CIGAR_gpu + sequences_per_stream * maxCIGAR , 
+                gpu_data.H_ptr_gpu + sequences_per_stream * maxMatrixSize, gpu_data.I_gpu + sequences_per_stream * maxMatrixSize,
+                maxCIGAR, maxMatrixSize, matchScore, misMatchScore, startGap, extendGap);
+            cudaErrchk(cudaGetLastError());
 
             cudaStreamSynchronize (streams_cuda[0]);
             cudaStreamSynchronize (streams_cuda[1]);
@@ -454,7 +455,8 @@ gpu_bsw_driver::kernel_driver_aa(std::vector<std::string> reads, std::vector<std
           asynch_mem_copies_htd(&gpu_data, offsetA_h, offsetB_h, strA, strA_d, strB, strB_d, half_length_A, half_length_B, totalLengthA, totalLengthB, sequences_per_stream, sequences_stream_leftover, streams_cuda);
           unsigned minSize = (maxReadSize < maxContigSize) ? maxReadSize : maxContigSize;
           unsigned maxSize = (maxReadSize > maxContigSize) ? maxReadSize : maxContigSize;
-          unsigned totShmem = 6 * (minSize + 1) * sizeof(short) + 6 * minSize + (minSize & 1) + maxSize + SCORE_MAT_SIZE * sizeof(short) + ENCOD_MAT_SIZE * sizeof(short); //check this
+          unsigned totShmem = 6 * (minSize + 1) * sizeof(long) + 6 * minSize + (minSize & 1) + maxSize + SCORE_MAT_SIZE * sizeof(short) + ENCOD_MAT_SIZE * sizeof(short); //check this
+         
           unsigned alignmentPad = 4 + (4 - totShmem % 4);
           size_t   ShmemBytes = totShmem + alignmentPad;
           if(ShmemBytes > 48000)
@@ -587,10 +589,10 @@ gpu_bsw_driver::verificationTest(char* rstFile, short scores[4], short* top_scor
             *seq_cigar = &CIGAR[cigar_k];
          
 
-            //if (cigar != *seq_cigar){
+            if (cigar != *seq_cigar){
                 std::cout << "#" << k << "\nSSW:\t" << cigar << "\nGSW:\t" << *seq_cigar << std::endl;
                 cig_errors++;
-            //}  
+            }  
 
             
             //verify that the SSW CIGAR score = result score
