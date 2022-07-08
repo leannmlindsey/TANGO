@@ -218,13 +218,13 @@ gpu_bsw_driver::kernel_driver_dna(std::vector<std::string> reads, std::vector<st
             cudaErrchk(cudaGetLastError());
 
             //printf("traceback kernel 2: parameters: seq_per_stream: %d, minsize = %d, ShmemBytes = %d, streams_cuda[1] = %d, maxCIGAR = %d\n", sequences_per_stream, minSize, ShmemBytes, streams_cuda[1], maxCIGAR);
-            gpu_bsw::sequence_dna_kernel_traceback<<<sequences_per_stream + sequences_stream_leftover, minSize, ShmemBytes, streams_cuda[1]>>>(
-                strA_d + half_length_A, strB_d + half_length_B, gpu_data.offset_ref_gpu + sequences_per_stream, gpu_data.offset_query_gpu + sequences_per_stream,
-                gpu_data.ref_start_gpu + sequences_per_stream, gpu_data.ref_end_gpu + sequences_per_stream, gpu_data.query_start_gpu + sequences_per_stream, gpu_data.query_end_gpu + sequences_per_stream,
-                gpu_data.scores_gpu + sequences_per_stream, gpu_data.longCIGAR_gpu + sequences_per_stream * maxCIGAR, gpu_data.CIGAR_gpu + sequences_per_stream * maxCIGAR , 
-                gpu_data.H_ptr_gpu + sequences_per_stream * maxMatrixSize,
-                maxCIGAR, maxMatrixSize, matchScore, misMatchScore, startGap, extendGap);
-            cudaErrchk(cudaGetLastError());
+            // gpu_bsw::sequence_dna_kernel_traceback<<<sequences_per_stream + sequences_stream_leftover, minSize, ShmemBytes, streams_cuda[1]>>>(
+            //     strA_d + half_length_A, strB_d + half_length_B, gpu_data.offset_ref_gpu + sequences_per_stream, gpu_data.offset_query_gpu + sequences_per_stream,
+            //     gpu_data.ref_start_gpu + sequences_per_stream, gpu_data.ref_end_gpu + sequences_per_stream, gpu_data.query_start_gpu + sequences_per_stream, gpu_data.query_end_gpu + sequences_per_stream,
+            //     gpu_data.scores_gpu + sequences_per_stream, gpu_data.longCIGAR_gpu + sequences_per_stream * maxCIGAR, gpu_data.CIGAR_gpu + sequences_per_stream * maxCIGAR , 
+            //     gpu_data.H_ptr_gpu + sequences_per_stream * maxMatrixSize,
+            //     maxCIGAR, maxMatrixSize, matchScore, misMatchScore, startGap, extendGap);
+            // cudaErrchk(cudaGetLastError());
 
             cudaStreamSynchronize (streams_cuda[0]);
             cudaStreamSynchronize (streams_cuda[1]);
@@ -522,3 +522,163 @@ gpu_bsw_driver::kernel_driver_aa(std::vector<std::string> reads, std::vector<std
     std::cout << "Total Alignments:"<<totalAlignments<<"\n"<<"Max Reference Size:"<<maxContigSize<<"\n"<<"Max Query Size:"<<maxReadSize<<"\n" <<"Total Execution Time (seconds):"<< diff.count() <<std::endl;
 }// end of amino acids kernel
 
+void
+gpu_bsw_driver::verificationTest(char* rstFile, short scores[4], short* top_scores, short* ref_beg, short* ref_end, short* query_beg, short* query_end, char* CIGAR, int maxCIGAR)
+{
+    printf("Verification Testing now\n");
+    std::string   rstLine;
+    std::ifstream rst_file(rstFile);
+    int           k = 0, beg_errors = 0, end_errors = 0, cig_errors = 0;
+    int cigar_k;
+    char *seq_cigar[maxCIGAR];
+    int cigScore, actual_cigScore;
+    int cigScoreErrors = 0;
+
+    if(rst_file.is_open())
+    {
+      while(getline(rst_file, rstLine))
+        {
+            std::string in = rstLine.substr(rstLine.find(":") + 1, rstLine.size());
+            std::string valsVec;
+            std::stringstream myStream(in);
+            
+            
+            int actual_score;
+            int actual_ref_st ; 
+            int actual_ref_end ;
+            int actual_que_st  ;
+            int actual_que_end ;
+            std::string cigar;
+
+            //myStream >> score >> ref_st >> ref_end >> que_st >> que_end >> cigar;
+            myStream >> actual_score >> actual_ref_st >> actual_ref_end >> actual_que_st >> actual_que_end >> cigar;
+            std::cout << "***************************************************************************\n" << std::endl;
+            std::cout << "***************************************************************************\n" << std::endl;
+            std::cout << "***************************************************************************\n" << std::endl;
+            std::cout << "Vtest File k=" << k << "\t" << actual_score << "\t" << actual_ref_st << "\t" << actual_ref_end << "\t" << actual_que_st << "\t" << actual_que_end << std:: endl;
+            std::cout << "Traceback k=" << k << "\t" << top_scores[k] << "\t" << ref_beg[k] << "\t" << ref_end[k] << "\t" << query_beg[k] << "\t" << query_end[k] << std:: endl;
+            std::cout << "***************************************************************************\n" << std::endl;
+            if (abs(top_scores[k] - actual_score) > 0 || abs(ref_beg[k] - actual_ref_st) > 0 ||
+              abs(query_beg[k] - actual_que_st) >0)
+            {
+                 beg_errors++;
+                //printf("%d: %d, %d : %d, %d : %d, %d : %d, %d : %d, %d \n ", k, top_scores[k], actual_score, ref_beg[k], actual_ref_st, ref_end[k], actual_ref_end, 
+                   // query_beg[k], actual_que_st, query_end[k], actual_que_end);
+                printf("ERROR #%d, %d: diff in ref start: %d, diff in que start: %d\n",beg_errors, k, ref_beg[k] - actual_ref_st, query_beg[k] - actual_que_st);
+               
+            } else {
+                printf("CORRECT! no differences in start positions.\n");
+            }
+
+            if (abs(top_scores[k] - actual_score) > 0 || abs(ref_end[k] - actual_ref_end) > 0  ||
+              abs(query_end[k] - actual_que_end) >0)
+            {
+                 end_errors++;
+                //printf("%d: %d, %d : %d, %d : %d, %d : %d, %d : %d, %d \n ", k, top_scores[k], actual_score, ref_beg[k], actual_ref_st, ref_end[k], actual_ref_end, 
+                   // query_beg[k], actual_que_st, query_end[k], actual_que_end);
+                printf("ERROR #%d, %d: diff in ref end: %d, diff in que end: %d\n",end_errors, k, ref_end[k] - actual_ref_end, query_end[k] - actual_que_end);
+               
+            } else {
+                printf("CORRECT! no differences in end positions.\n");
+            }
+             
+            std::cout << "***************************************************************************" << std::endl;
+            cigar_k=k*maxCIGAR; //get the index for each cigar string
+            *seq_cigar = &CIGAR[cigar_k];
+         
+
+            //if (cigar != *seq_cigar){
+                std::cout << "#" << k << "\nSSW:\t" << cigar << "\nGSW:\t" << *seq_cigar << std::endl;
+                cig_errors++;
+            //}  
+
+            
+            //verify that the SSW CIGAR score = result score
+            printf("> %d\n", k);
+            cigScore = gpu_bsw_driver::scoreCIGAR(*seq_cigar, scores);
+            actual_cigScore = gpu_bsw_driver::scoreCIGAR(cigar, scores);
+            
+            if (top_scores[k] != cigScore){
+                printf("The result score from ADEPT traceback %d does not match the cigScore %d\n", top_scores[k], cigScore);
+                cigScoreErrors ++;
+            } 
+            else {
+                printf("The cigScore from ADEPT traceback is a MATCH!\n");
+            }
+            if (actual_score != actual_cigScore){
+                printf("The result score from vTEST %d does not match the cigScore from vTest %d\n", actual_score, actual_cigScore);
+                cigScoreErrors ++;
+            } 
+            else {
+                printf("The cigScore from vTEST is a MATCH!\n");
+            }
+            k++;
+        }
+        if((beg_errors + end_errors) == 0)
+            std::cout << "VERIFICATION TEST PASSED" << std::endl;
+        else
+            std::cout << "ERRORS OCCURRED DURING VERIFICATION TEST, beg_error count:" <<beg_errors<< " end_error count:" <<end_errors<< ", cigar error count:" << cig_errors << ", cigar Score Errors: " << cigScoreErrors << std::endl;
+    }
+}
+
+int
+gpu_bsw_driver::scoreCIGAR(std::string CIGAR, short scores[4])
+{
+    short matchScore = scores[0], misMatchScore = scores[1], startGap = scores[2], extendGap = scores[3];
+    int digit_length = 0;
+    char digit_array[5]; 
+    int cigar_n =0;
+    short score = 0;
+    
+    for (int i = 0; CIGAR[i] != '\0'; i++){
+        
+        // create int from numeric portion of cigar string
+        if ( CIGAR[i] >= 48 && CIGAR[i] <= 57){
+            digit_array[digit_length] = CIGAR[i]; //adds one number to digit array 
+            digit_length++;
+            //if (myId ==0 && myTId ==0){
+                //printf("char is a digit! add to the array \n");
+                //printf("digit array length is %d\n", digit_length);
+                //printf("Current number in digit array = ");
+                //for (int q = 0; q < digit_length; q++){
+                    //printf("%c", digit_array[q]);
+                //}
+                //printf("\n\n");
+            //}
+        } else {
+            //first convert int from char array
+            for (int j = 0; j < digit_length; j++ ){
+                
+                cigar_n = cigar_n + (exp10f((float)digit_length-j-1) * (digit_array[j]-'0'));
+                digit_array[j] = '\0';
+                
+            }
+            digit_length = 0;
+            
+            //add scoring multiply here 
+            if (CIGAR[i] == '='){
+               
+                score = score + (cigar_n * matchScore);
+                //printf("char is =, r_score is  : %d\n\n", r_score);
+              
+            } else if (CIGAR[i]== 'X') {
+                score = score + (cigar_n * misMatchScore);
+                //printf("char is X, r_score is  : %d\n\n", r_score);
+            } else if (CIGAR[i]== 'D') {
+                score = score + startGap + (cigar_n - 1) *extendGap;
+                //printf("char is D, r_score is  : %d\n\n", r_score);
+            } else if (CIGAR[i]== 'I') {
+                score = score + startGap + (cigar_n - 1) * extendGap;
+                //printf("char is I, r_score is  : %d\n\n", r_score);
+            } else {}
+
+            cigar_n=0;
+        }
+        
+
+    }
+    
+    //std::cout << "Here is the CIGAR " << CIGAR << " Here is the SCORE = " << score << std::endl;
+    
+    return score;
+}

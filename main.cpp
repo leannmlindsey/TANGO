@@ -10,8 +10,8 @@
 
 using namespace std;
 
-void proteinSampleRun(string refFile, string queFile, string out_file){
-  long long int total_cells = 0;
+void proteinSampleRun(string refFile, string queFile, string out_file, char* resultFile){
+  //long long int total_cells = 0;
   vector<string> G_sequencesA, G_sequencesB;
   string myInLine;
   int largestA = 0, largestB = 0, totSizeA = 0, totSizeB = 0;
@@ -125,7 +125,6 @@ void proteinSampleRun(string refFile, string queFile, string out_file){
     gpu_bsw_driver::alignment_results results_test;
     gpu_bsw_driver::kernel_driver_aa(G_sequencesB, G_sequencesA, &results_test, maxCIGAR, scores_matrix, -6, -1, 0.5);
 
-  //  gpu_bsw_driver::verificationTest(resultFile, results_test.g_alAbeg, results_test.g_alBbeg, results_test.g_alAend, results_test.g_alBend);
 
    ofstream results_file(out_file);
 
@@ -154,7 +153,7 @@ void proteinSampleRun(string refFile, string queFile, string out_file){
 }
 
 
-void dnaSampleRun(string refFile, string queFile, string out_file){
+void dnaSampleRun(string refFile, string queFile, string out_file, char* resultFile){
   vector<string> G_sequencesA,
       G_sequencesB;
 
@@ -231,9 +230,9 @@ void dnaSampleRun(string refFile, string queFile, string out_file){
         //cigar_index = k*maxCIGAR;
         seq_cigar = str_ptr;
         results_file<<results_test.top_scores[k]<<"\t"
-                <<results_test.ref_begin[k]-1<<"\t"
+                <<results_test.ref_begin[k]<<"\t"
                 <<results_test.ref_end[k]<<"\t"
-                <<results_test.query_begin[k]-1<<"\t"
+                <<results_test.query_begin[k]<<"\t"
                 <<results_test.query_end[k]<<"\t"
                 <<seq_cigar
                 <<endl;
@@ -242,14 +241,32 @@ void dnaSampleRun(string refFile, string queFile, string out_file){
   results_file.flush();
   results_file.close();
 
+
+  gpu_bsw_driver::verificationTest(resultFile, scores, 
+       results_test.top_scores, 
+       results_test.ref_begin, 
+       results_test.ref_end, 
+       results_test.query_begin,
+       results_test.query_end,
+       results_test.CIGAR,
+       maxCIGAR);
+
   free_alignments(&results_test);
-  long long int total_cells = 0;
+  //long long int total_cells = 0;
   //for(int l = 0; l < G_sequencesA.size(); l++){
     //total_cells += G_sequencesA.at(l).size()*G_sequencesB.at(l).size();
   //}
   //cout <<"Total Cells:"<<total_cells<<endl;
 
-  //gpu_bsw_driver::verificationTest(resultFile, results_test.g_alAbeg, results_test.g_alBbeg, results_test.g_alAend, results_test.g_alBend);
+  
+  // gpu_bsw_driver::verificationTest(char* resultFile, short scores[4], 
+  //     short* top_scores, 
+  //     short* ref_beg, 
+  //     short* ref_end, 
+  //     short* query_beg, 
+  //     short* query_end, 
+  //     char* CIGAR, 
+  //     int maxCIGAR);
 }
 
 int
@@ -258,9 +275,10 @@ main(int argc, char* argv[])
   string in_arg = argv[1];
 
  if(in_arg == "aa"){
- 	proteinSampleRun(argv[2], argv[3], argv[4]);
+ 	proteinSampleRun(argv[2], argv[3], argv[4], argv[5]);
  }else{
- 	dnaSampleRun(argv[2], argv[3], argv[4]);
+	cout << "VTest branch DNA" << endl;
+ 	dnaSampleRun(argv[2], argv[3], argv[4], argv[5]);
  }
 
     return 0;

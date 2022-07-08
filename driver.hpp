@@ -37,5 +37,13 @@ kernel_driver_dna(std::vector<std::string> reads, std::vector<std::string> conti
 void
 kernel_driver_aa(std::vector<std::string> reads, std::vector<std::string> contigs, alignment_results *alignments, int maxCIGAR, short scoring_matrix[], short openGap, short extendGap, float factor = 1.0);
 
+void
+verificationTest(char* resultFile, short scores[4], short* top_scores, short* ref_beg, short* ref_end, short* query_beg, short* query_end, char* CIGAR, int maxCIGAR);
+
+int
+scoreCIGAR(std::string CIGAR, short scores[4]);
+
 }
+
+
 #endif
