@@ -24,7 +24,7 @@ gpu_bsw_driver::kernel_driver_dna(std::vector<std::string> reads, std::vector<st
     //printf("\nmaxContigSize = %d\n",maxContigSize);
     unsigned maxReadSize = getMaxLength(reads);
     //printf("\nmaxReadSize = %d\n",maxReadSize);
-    unsigned maxCigar = (maxContigSize > maxReadSize ) ? maxContigSize : maxReadSize;
+    unsigned maxCigar = (maxContigSize > maxReadSize ) ? 3*maxContigSize : 3*maxReadSize;
   
     unsigned const maxMatrixSize = (maxContigSize + 1 ) * (maxReadSize + 1);
     unsigned totalAlignments = contigs.size(); // assuming that read and contig vectors are same length
@@ -78,7 +78,9 @@ gpu_bsw_driver::kernel_driver_dna(std::vector<std::string> reads, std::vector<st
             BLOCKS_l += leftOver_device;
         unsigned leftOvers    = BLOCKS_l % its;
         unsigned stringsPerIt = BLOCKS_l / its;
+        printf("stringsPerIt = %d, leftovers = %d\n",stringsPerIt, leftOvers);
         gpu_alignments gpu_data(stringsPerIt + leftOvers, maxCIGAR, maxMatrixSize); // gpu mallocs
+
 
         short* alAbeg = alignments->ref_begin + my_cpu_id * alignmentsPerDevice;
         short* alBbeg = alignments->query_begin + my_cpu_id * alignmentsPerDevice;
@@ -218,14 +220,14 @@ gpu_bsw_driver::kernel_driver_dna(std::vector<std::string> reads, std::vector<st
                 maxCIGAR, maxMatrixSize, matchScore, misMatchScore, startGap, extendGap);
             cudaErrchk(cudaGetLastError());
 
-            //printf("traceback kernel 2: parameters: seq_per_stream: %d, minsize = %d, ShmemBytes = %d, streams_cuda[1] = %d, maxCIGAR = %d\n", sequences_per_stream, minSize, ShmemBytes, streams_cuda[1], maxCIGAR);
-            gpu_bsw::sequence_dna_kernel_traceback<<<sequences_per_stream + sequences_stream_leftover, minSize, ShmemBytes, streams_cuda[1]>>>(
-                strA_d + half_length_A, strB_d + half_length_B, gpu_data.offset_ref_gpu + sequences_per_stream, gpu_data.offset_query_gpu + sequences_per_stream,
-                gpu_data.ref_start_gpu + sequences_per_stream, gpu_data.ref_end_gpu + sequences_per_stream, gpu_data.query_start_gpu + sequences_per_stream, gpu_data.query_end_gpu + sequences_per_stream,
-                gpu_data.scores_gpu + sequences_per_stream, gpu_data.longCIGAR_gpu + sequences_per_stream * maxCIGAR, gpu_data.CIGAR_gpu + sequences_per_stream * maxCIGAR , 
-                gpu_data.H_ptr_gpu + sequences_per_stream * maxMatrixSize, gpu_data.I_gpu + sequences_per_stream * maxMatrixSize,
-                maxCIGAR, maxMatrixSize, matchScore, misMatchScore, startGap, extendGap);
-            cudaErrchk(cudaGetLastError());
+            // //printf("traceback kernel 2: parameters: seq_per_stream: %d, minsize = %d, ShmemBytes = %d, streams_cuda[1] = %d, maxCIGAR = %d\n", sequences_per_stream, minSize, ShmemBytes, streams_cuda[1], maxCIGAR);
+            // gpu_bsw::sequence_dna_kernel_traceback<<<sequences_per_stream + sequences_stream_leftover, minSize, ShmemBytes, streams_cuda[1]>>>(
+            //     strA_d + half_length_A, strB_d + half_length_B, gpu_data.offset_ref_gpu + sequences_per_stream, gpu_data.offset_query_gpu + sequences_per_stream,
+            //     gpu_data.ref_start_gpu + sequences_per_stream, gpu_data.ref_end_gpu + sequences_per_stream, gpu_data.query_start_gpu + sequences_per_stream, gpu_data.query_end_gpu + sequences_per_stream,
+            //     gpu_data.scores_gpu + sequences_per_stream, gpu_data.longCIGAR_gpu + sequences_per_stream * maxCIGAR, gpu_data.CIGAR_gpu + sequences_per_stream * maxCIGAR , 
+            //     gpu_data.H_ptr_gpu + sequences_per_stream * maxMatrixSize, gpu_data.I_gpu + sequences_per_stream * maxMatrixSize,
+            //     maxCIGAR, maxMatrixSize, matchScore, misMatchScore, startGap, extendGap);
+            //cudaErrchk(cudaGetLastError());
 
             cudaStreamSynchronize (streams_cuda[0]);
             cudaStreamSynchronize (streams_cuda[1]);
