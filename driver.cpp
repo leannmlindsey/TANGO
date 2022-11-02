@@ -205,7 +205,7 @@ gpu_bsw_driver::kernel_driver_dna(std::vector<std::string> reads, std::vector<st
             unsigned alignmentPad = 4 + (4 - totShmem % 4);
             size_t   ShmemBytes = totShmem + alignmentPad + sizeof(long) * (maxContigSize + maxReadSize + 2 );
              
-            printf("totShmem = %d, alignmentPad = %d, maxContigSize = %d, maxReadSize = %d, ShmemBytes = %d\n", totShmem, alignmentPad, maxContigSize, maxReadSize, ShmemBytes);
+            //printf("totShmem = %d, alignmentPad = %d, maxContigSize = %d, maxReadSize = %d, ShmemBytes = %d\n", totShmem, alignmentPad, maxContigSize, maxReadSize, ShmemBytes);
             if(ShmemBytes > 48000)
                 cudaFuncSetAttribute(gpu_bsw::sequence_dna_kernel_traceback, cudaFuncAttributeMaxDynamicSharedMemorySize, ShmemBytes);
 
@@ -227,7 +227,7 @@ gpu_bsw_driver::kernel_driver_dna(std::vector<std::string> reads, std::vector<st
             //     gpu_data.scores_gpu + sequences_per_stream, gpu_data.longCIGAR_gpu + sequences_per_stream * maxCIGAR, gpu_data.CIGAR_gpu + sequences_per_stream * maxCIGAR , 
             //     gpu_data.H_ptr_gpu + sequences_per_stream * maxMatrixSize, gpu_data.I_gpu + sequences_per_stream * maxMatrixSize,
             //     maxCIGAR, maxMatrixSize, matchScore, misMatchScore, startGap, extendGap);
-            //cudaErrchk(cudaGetLastError());
+            // cudaErrchk(cudaGetLastError());
 
             cudaStreamSynchronize (streams_cuda[0]);
             cudaStreamSynchronize (streams_cuda[1]);
@@ -529,7 +529,7 @@ gpu_bsw_driver::kernel_driver_aa(std::vector<std::string> reads, std::vector<std
 void
 gpu_bsw_driver::verificationTest(char* rstFile, short scores[4], short* top_scores, short* ref_beg, short* ref_end, short* query_beg, short* query_end, char* CIGAR, int maxCIGAR)
 {
-    printf("Verification Testing now\n");
+    //printf("Verification Testing now\n");
     std::string   rstLine;
     std::ifstream rst_file(rstFile);
     int           k = 0, beg_errors = 0, end_errors = 0, cig_errors = 0;

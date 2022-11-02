@@ -242,14 +242,14 @@ void dnaSampleRun(string refFile, string queFile, string out_file, char* resultF
   results_file.close();
 
 
-  gpu_bsw_driver::verificationTest(resultFile, scores, 
-       results_test.top_scores, 
-       results_test.ref_begin, 
-       results_test.ref_end, 
-       results_test.query_begin,
-       results_test.query_end,
-       results_test.CIGAR,
-       maxCIGAR);
+  // gpu_bsw_driver::verificationTest(resultFile, scores, 
+  //      results_test.top_scores, 
+  //      results_test.ref_begin, 
+  //      results_test.ref_end, 
+  //      results_test.query_begin,
+  //      results_test.query_end,
+  //      results_test.CIGAR,
+  //      maxCIGAR);
 
   free_alignments(&results_test);
   //long long int total_cells = 0;

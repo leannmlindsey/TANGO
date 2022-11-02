@@ -331,7 +331,7 @@ gpu_bsw::printMatrix(char* H_ptr, short* I, char* seqA, char* seqB, int lengthSe
    
 
                 char temp_H;
-                printf("FULL POINTER MATRIX\n");
+                printf("FULL H POINTER MATRIX\n");
                  int S_current_diagId    = 0;
                  int S_current_locOffset = 0;
                 printf("-\t-\t");
@@ -373,6 +373,92 @@ gpu_bsw::printMatrix(char* H_ptr, short* I, char* seqA, char* seqB, int lengthSe
                                 printf("*\t");
                                 break;
                       
+
+
+                        }
+                  
+                }
+                printf("\n");
+            }
+
+            printf("FULL E POINTER MATRIX\n");
+                 S_current_diagId    = 0;
+                 S_current_locOffset = 0;
+                printf("-\t-\t");
+                for (int sj = 0; sj < topSeqLength; sj++){
+                    printf("%d\t", sj); //indexes printed across the top 
+                }
+                printf("\n-\t-\t");
+                for (int sj = 0; sj < topSeqLength; sj++){
+                    printf("%c\t", topSeq[sj]); //query sequence printed across the top 
+                }
+                printf("\n");
+                for (int si = 0; si < sideSeqLength + 1; si++){
+                    printf("%d\t%c\t", si, sideSeq[si]); //reference sequence & indexes printed down the side 
+                  
+                    for (int sj =0; sj < topSeqLength + 1; sj++){
+                       
+                        S_current_diagId = si + sj;
+
+                        if(S_current_diagId < maxSize + 1){
+                            S_current_locOffset = sj;
+                        } else {
+                            unsigned short S_myOff = S_current_diagId - maxSize;
+                            S_current_locOffset = sj - S_myOff;
+                        }
+                        //printf("%d\t",I_score[diagOffset[S_current_diagId] + S_current_locOffset]);
+                        //printf("%d\t",H_ptr[diagOffset[S_current_diagId] + S_current_locOffset]);
+                        temp_H = H_ptr[diagOffset[S_current_diagId] + S_current_locOffset];
+                        switch (temp_H & 0b00000010){ //values from E
+                            case 0b00000010 :
+                                printf("-\t");
+                                break;
+                            case 0b00000000 :
+                                printf("*\t");
+                                break;
+
+
+                        }
+                  
+                }
+                printf("\n");
+            }
+
+            printf("FULL F POINTER MATRIX\n");
+                 S_current_diagId    = 0;
+                 S_current_locOffset = 0;
+                printf("-\t-\t");
+                for (int sj = 0; sj < topSeqLength; sj++){
+                    printf("%d\t", sj); //indexes printed across the top 
+                }
+                printf("\n-\t-\t");
+                for (int sj = 0; sj < topSeqLength; sj++){
+                    printf("%c\t", topSeq[sj]); //query sequence printed across the top 
+                }
+                printf("\n");
+                for (int si = 0; si < sideSeqLength + 1; si++){
+                    printf("%d\t%c\t", si, sideSeq[si]); //reference sequence & indexes printed down the side 
+                  
+                    for (int sj =0; sj < topSeqLength + 1; sj++){
+                       
+                        S_current_diagId = si + sj;
+
+                        if(S_current_diagId < maxSize + 1){
+                            S_current_locOffset = sj;
+                        } else {
+                            unsigned short S_myOff = S_current_diagId - maxSize;
+                            S_current_locOffset = sj - S_myOff;
+                        }
+                        //printf("%d\t",I_score[diagOffset[S_current_diagId] + S_current_locOffset]);
+                        //printf("%d\t",H_ptr[diagOffset[S_current_diagId] + S_current_locOffset]);
+                        temp_H = H_ptr[diagOffset[S_current_diagId] + S_current_locOffset];
+                        switch (temp_H & 0b00000001){ //values from E
+                            case 0b00000001 :
+                                printf("|\t");
+                                break;
+                            case 0b00000000 :
+                                printf("*\t");
+                                break;
 
 
                         }
@@ -515,31 +601,47 @@ gpu_bsw::traceBack(short current_i, short current_j, char* seqA_array, char* seq
        temp_H = H_ptr[diagOffset[current_diagId] + current_locOffset];
        
        
-        // if(myId==0 && myTId ==0) {
-        //     printf("current_i:%d, current_j:%d, %c , %c, %d\n",current_i, current_j, shorterSeq[current_j], longerSeq[current_i],counter);
-        // } 
+         if(myId==0 && myTId ==0) {
+             printf("current_i:%d, current_j:%d, %c , %c, %d\n",current_i, current_j, shorterSeq[current_j], longerSeq[current_i],counter);
+         } 
 
         //write the current value into longCIGAR then assign next_i
         if (matrix == 'H') { 
+            if(myId==0 && myTId==0){
+              printf("in matrix H");
+            }
             longCIGAR[counter] = shorterSeq[current_j] == longerSeq[current_i] ? '=' : 'X';
+             
             switch (temp_H & 0b00001100){    
                 case 0b00001100 :
                     matrix = 'H';
+                    if(myId==0 && myTId==0){
+                      printf("00001100\n");
+                    }
                     next_i = current_i - 1;
                     next_j = current_j - 1;
                     break;
                 case 0b00001000 :
                     matrix = 'F';
+                    if(myId==0 && myTId==0){
+                      printf("00001000\n");
+                    }
                     next_i = current_i - 1;
                     next_j = current_j;
                     break;
                 case 0b00000100 :
                     matrix = 'E';
+                    if(myId==0 && myTId==0){
+                      printf("00000100\n");
+                    }
                     next_i = current_i;
                     next_j = current_j - 1;
                     break;
                  case 0b00000000 : 
                     continueTrace = false;
+                    if(myId==0 && myTId==0){
+                      printf("00000000\n");
+                    }
                     break;
             }
         } else if (matrix == 'E'){
@@ -548,14 +650,23 @@ gpu_bsw::traceBack(short current_i, short current_j, char* seqA_array, char* seq
                 if (longCIGAR[counter] == 'I') {longCIGAR[counter-1] = 'I';}
                 else if (longCIGAR[counter] == 'D') {longCIGAR[counter-1] = 'D';}
             }
+            if(myId==0 && myTId==0){
+              printf("in matrix E");
+            }
            
             switch (temp_H & 0b00000010){
                 case 0b00000010 :
+                    if(myId==0 && myTId==0){
+                      printf("00000010\n");
+                    }
                     next_i = current_i;
                     next_j = current_j - 1;
                     break;
                 case 0b00000000 :
                     matrix = 'H';
+                    if(myId==0 && myTId==0){
+                      printf("00000000\n");
+                    }
                     next_i = current_i;
                     next_j = current_j-1;
                     break;
@@ -566,13 +677,22 @@ gpu_bsw::traceBack(short current_i, short current_j, char* seqA_array, char* seq
                 if (longCIGAR[counter] == 'I') {longCIGAR[counter-1] = 'I';}
                 else if (longCIGAR[counter] == 'D') {longCIGAR[counter-1] = 'D';}
             }
+            if(myId==0 && myTId==0){
+              printf("in matrix H");
+            }
             switch (temp_H & 0b00000001){
                 case 0b00000001 :
+                    if(myId==0 && myTId==0){
+                      printf("00000001\n");
+                    }
                     next_i = current_i - 1;
                     next_j = current_j;
                     break;
                 case 0b00000000 :
                     matrix = 'H';
+                    if(myId==0 && myTId==0){
+                      printf("00000000\n");
+                    }
                     next_i = current_i-1;
                     next_j = current_j;
                     break;
@@ -584,7 +704,9 @@ gpu_bsw::traceBack(short current_i, short current_j, char* seqA_array, char* seq
         //     }
         //     printf("\n");
         // }  
-       
+        if(myId==0 && myTId ==0) {
+            printf("     %c\n",longCIGAR[counter]);
+        }
         current_i = next_i;
         current_j = next_j;
 
@@ -892,8 +1014,8 @@ gpu_bsw::sequence_dna_kernel_traceback(char* seqA_array, char* seqB_array, unsig
           if(warpId == 0 && laneId == 0) final_prev_prev_H = 0;
           short diag_score = final_prev_prev_H + ((longer_seq[i] == myColumnChar) ? matchScore : misMatchScore);
           _curr_H = findMaxFour(diag_score, _curr_F, _curr_E, 0, &ind);
-          //if (thread_Id == 121) printf("j = %d, myColumnChar = %c, i = %d, comparChar = %c, _curr_H = %d, _curr_E = %d, _curr_F = %d, diag_score = %d\n",
-                            //j, myColumnChar, i, longer_seq[i], _curr_H, _curr_E, _curr_F, diag_score);
+           //if (thread_Id == 117 ||thread_Id == 118 ||thread_Id == 119 ||thread_Id == 120 ) printf("j = %d, myColumnChar = %c, i = %d, comparChar = %c, _curr_H = %d, _curr_E = %d, _curr_F = %d, diag_score = %d\n",
+                          //  j, myColumnChar, i, longer_seq[i], _curr_H, _curr_E, _curr_F, diag_score);
           
           if (ind == 0) { // diagonal cell is max, set bits to 0b00001100
                 H_temp = H_temp | 4;     // set bit 0b00000100
@@ -914,11 +1036,11 @@ gpu_bsw::sequence_dna_kernel_traceback(char* seqA_array, char* seqB_array, unsig
           }
           H_ptr[diagOffset[diagId] + locOffset] =  H_temp;
           I[diagOffset[diagId] + locOffset] = _curr_H;
-          if (block_Id == 0 && thread_Id == 122) {
-            printf("i = %d, j = %d, diag_score = %d, _curr_F = %d, _curr_E = %d, maxscore = _curr_H = %d, ind = %d\n",
-                    i, j, diag_score, _curr_F, _curr_E, _curr_H, ind);
+          //if (block_Id == 0 && thread_Id == 122) {
+            //printf("i = %d, j = %d, diag_score = %d, _curr_F = %d, _curr_E = %d, maxscore = _curr_H = %d, ind = %d\n",
+                    //i, j, diag_score, _curr_F, _curr_E, _curr_H, ind);
             //printf("IN LOOP TRACEBACK: i = %d, j = %d, I=%d\n", i, j, I[diagOffset[27]+9]);
-          }
+          //}
           //I[diagOffset[diagId] + locOffset] = _curr_E;
           //I[diagOffset[diagId] + locOffset] = _curr_F;
       
