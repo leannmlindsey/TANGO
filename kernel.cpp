@@ -577,12 +577,12 @@ gpu_bsw::traceBack(short current_i, short current_j, char* seqA_array, char* seq
         current_locOffset    = current_j - myOff;
     }
 
-    //if(myId == 0 && myTId ==0){
-        //printf("Beginning Traceback on Block #%d\n", myId);
-        //printf("diagID:%d locoffset:%d current_i:%d, current_j:%d, Block #%d\n\n",current_diagId, current_locOffset, current_i, current_j, myId);
-        //printf("BLOCK #%d, first H_ptr[] = %c, H_ptr[0] = %c\n", myId, H_ptr[diagOffset[current_diagId] + current_locOffset], H_ptr[0]);                
+    if(myId == 0 && myTId ==0 && DEBUG_PRINT == 1){
+        printf("Beginning Traceback on Block #%d\n", myId);
+        printf("diagID:%d locoffset:%d current_i:%d, current_j:%d, Block #%d\n\n",current_diagId, current_locOffset, current_i, current_j, myId);
+        printf("BLOCK #%d, first H_ptr[] = %c, H_ptr[0] = %c\n", myId, H_ptr[diagOffset[current_diagId] + current_locOffset], H_ptr[0]);                
         
-    //}
+    }
     char temp_H;
     temp_H = H_ptr[diagOffset[current_diagId] + current_locOffset];
     short next_i;
@@ -601,110 +601,124 @@ gpu_bsw::traceBack(short current_i, short current_j, char* seqA_array, char* seq
        temp_H = H_ptr[diagOffset[current_diagId] + current_locOffset];
        
        
-         if(myId==0 && myTId ==0) {
+         if(myId==0 && myTId ==0 && DEBUG_PRINT == 1) {
              printf("current_i:%d, current_j:%d, %c , %c, %d\n",current_i, current_j, shorterSeq[current_j], longerSeq[current_i],counter);
          } 
 
         //write the current value into longCIGAR then assign next_i
         if (matrix == 'H') { 
-            if(myId==0 && myTId==0){
+            if(myId==0 && myTId==0&& DEBUG_PRINT == 1){
               printf("in matrix H");
             }
-            longCIGAR[counter] = shorterSeq[current_j] == longerSeq[current_i] ? '=' : 'X';
-             
+            
             switch (temp_H & 0b00001100){    
                 case 0b00001100 :
                     matrix = 'H';
-                    if(myId==0 && myTId==0){
+                    if(myId==0 && myTId==0&& DEBUG_PRINT == 1){
                       printf("00001100\n");
                     }
+                    longCIGAR[counter] = shorterSeq[current_j] == longerSeq[current_i] ? '=' : 'X';
+                    counter++;
                     next_i = current_i - 1;
                     next_j = current_j - 1;
                     break;
                 case 0b00001000 :
                     matrix = 'F';
-                    if(myId==0 && myTId==0){
+                    if(myId==0 && myTId==0&& DEBUG_PRINT == 1){
                       printf("00001000\n");
                     }
-                    next_i = current_i - 1;
+                    next_i = current_i;
                     next_j = current_j;
                     break;
                 case 0b00000100 :
                     matrix = 'E';
-                    if(myId==0 && myTId==0){
+                    if(myId==0 && myTId==0&& DEBUG_PRINT == 1){
                       printf("00000100\n");
                     }
                     next_i = current_i;
-                    next_j = current_j - 1;
+                    next_j = current_j;
                     break;
                  case 0b00000000 : 
                     continueTrace = false;
-                    if(myId==0 && myTId==0){
+                    if(myId==0 && myTId==0&& DEBUG_PRINT == 1){
                       printf("00000000\n");
                     }
                     break;
             }
         } else if (matrix == 'E'){
-            longCIGAR[counter] = seqBShorter ? 'I' : 'D';
-            if (longCIGAR[counter-1] == 'X' ) {
-                if (longCIGAR[counter] == 'I') {longCIGAR[counter-1] = 'I';}
-                else if (longCIGAR[counter] == 'D') {longCIGAR[counter-1] = 'D';}
-            }
-            if(myId==0 && myTId==0){
+            if(myId==0 && myTId==0&& DEBUG_PRINT == 1){
               printf("in matrix E");
             }
-           
             switch (temp_H & 0b00000010){
                 case 0b00000010 :
-                    if(myId==0 && myTId==0){
+                    if(myId==0 && myTId==0&& DEBUG_PRINT == 1){
                       printf("00000010\n");
                     }
+		                longCIGAR[counter] = seqBShorter ? 'I' : 'D';
+                    if (longCIGAR[counter-1] == 'X' ) {
+                        if (longCIGAR[counter] == 'I') {longCIGAR[counter-1] = 'I';}
+                        else if (longCIGAR[counter] == 'D') {longCIGAR[counter-1] = 'D';}
+                        }
+                    counter++;
                     next_i = current_i;
                     next_j = current_j - 1;
                     break;
                 case 0b00000000 :
                     matrix = 'H';
-                    if(myId==0 && myTId==0){
+                    if(myId==0 && myTId==0&& DEBUG_PRINT == 1){
                       printf("00000000\n");
                     }
+                    longCIGAR[counter] = seqBShorter ? 'I' : 'D';
+                    if (longCIGAR[counter-1] == 'X' ) {
+                        if (longCIGAR[counter] == 'I') {longCIGAR[counter-1] = 'I';}
+                        else if (longCIGAR[counter] == 'D') {longCIGAR[counter-1] = 'D';}
+                        }
+                    counter++;
                     next_i = current_i;
-                    next_j = current_j-1;
+                    next_j = current_j - 1;
                     break;
             }
         } else if (matrix == 'F'){
-            longCIGAR[counter] = seqBShorter ? 'D' : 'I';
-            if (longCIGAR[counter-1] == 'X' ) {
-                if (longCIGAR[counter] == 'I') {longCIGAR[counter-1] = 'I';}
-                else if (longCIGAR[counter] == 'D') {longCIGAR[counter-1] = 'D';}
-            }
-            if(myId==0 && myTId==0){
-              printf("in matrix H");
+            if(myId==0 && myTId==0&& DEBUG_PRINT == 1){
+              printf("in matrix F");
             }
             switch (temp_H & 0b00000001){
                 case 0b00000001 :
-                    if(myId==0 && myTId==0){
+                    if(myId==0 && myTId==0&& DEBUG_PRINT == 1){
                       printf("00000001\n");
                     }
+		                longCIGAR[counter] = seqBShorter ? 'D' : 'I';
+                    if (longCIGAR[counter-1] == 'X' ) {
+                       if (longCIGAR[counter] == 'I') {longCIGAR[counter-1] = 'I';}
+                       else if (longCIGAR[counter] == 'D') {longCIGAR[counter-1] = 'D';}
+                    }
+                    counter++;
                     next_i = current_i - 1;
                     next_j = current_j;
                     break;
                 case 0b00000000 :
                     matrix = 'H';
-                    if(myId==0 && myTId==0){
+                    if(myId==0 && myTId==0&& DEBUG_PRINT == 1){
                       printf("00000000\n");
                     }
-                    next_i = current_i-1;
+                    longCIGAR[counter] = seqBShorter ? 'D' : 'I';
+                    if (longCIGAR[counter-1] == 'X' ) {
+                       if (longCIGAR[counter] == 'I') {longCIGAR[counter-1] = 'I';}
+                       else if (longCIGAR[counter] == 'D') {longCIGAR[counter-1] = 'D';}
+                    }
+                    counter++;
+                    next_i = current_i - 1;
                     next_j = current_j;
                     break;
             }
         }
-        // if(myId==0 && myTId ==0) {
-        //     for (int i = 0; i <= counter; i++){
-        //         printf("%c",longCIGAR[i]);
-        //     }
-        //     printf("\n");
-        // }  
-        if(myId==0 && myTId ==0) {
+        if(myId==0 && myTId ==0&& DEBUG_PRINT == 1) {
+             for (int i = 0; i <= counter; i++){
+                 printf("%c",longCIGAR[i]);
+             }
+             printf("\n");
+         }  
+        if(myId==0 && myTId ==0&& DEBUG_PRINT == 1) {
             printf("     %c\n",longCIGAR[counter]);
         }
         current_i = next_i;
@@ -720,10 +734,10 @@ gpu_bsw::traceBack(short current_i, short current_j, char* seqA_array, char* seq
             unsigned short myOff2 = current_diagId - maxSize;
             current_locOffset     = current_j - myOff2;
         }
-        counter++;   
+        //counter++;   
         
    }
-   if ((current_i == 0) || (current_j == 0)) {longCIGAR[counter] = (shorterSeq[current_j] == longerSeq[current_i]) ? '=' : 'X';}
+   if ((current_i == 0) || (current_j == 0)) {longCIGAR[counter] = (shorterSeq[current_j] == longerSeq[current_i]) ? '=' : 'S';}
    else {longCIGAR[counter-1]='\0'; current_i ++; current_j++; next_i ++; next_j ++;}
 
   //  if(myId==0 && myTId ==0) {
@@ -1081,8 +1095,9 @@ gpu_bsw::sequence_dna_kernel_traceback(char* seqA_array, char* seqB_array, unsig
         }
         //printf("BEFORE TRACEBACK: I=%d\n", I[diagOffset[23]+9]);
         //printf("before calling TRACEBACK, BLOCK #%d, current_i = %d, current_j = %d\n", block_Id, current_i, current_j);
-        gpu_bsw::printMatrix(H_ptr, I, seqA, seqB, lengthSeqA, lengthSeqB, diagOffset,maxSize);
-       
+        if (DEBUG_PRINT == 1) {
+          gpu_bsw::printMatrix(H_ptr, I, seqA, seqB, lengthSeqA, lengthSeqB, diagOffset,maxSize);
+        }
         //unsigned short diagId    = current_i + current_j;
         //unsigned short locOffset = 0;
 

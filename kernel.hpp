@@ -7,6 +7,7 @@
 #define NUM_OF_AA 21
 #define ENCOD_MAT_SIZE 91
 #define SCORE_MAT_SIZE 576
+#define DEBUG_PRINT 0
 
 namespace gpu_bsw{
 __device__ short
