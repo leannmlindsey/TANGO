@@ -253,7 +253,13 @@ gpu_bsw::createCIGAR(char* longCIGAR, char* CIGAR, int maxCIGAR,
         const char* seqA, const char* seqB, unsigned lengthShorterSeq, unsigned lengthLongerSeq, 
         bool seqBShorter, short first_j, short last_j, short first_i, short last_i) 
 {
-  
+    int myId = blockIdx.x;
+    int myTId = threadIdx.x;
+    if(myId==0 && myTId ==0 && DEBUG_PRINT == 1) {
+     printf("made it to CIGAR. lengthShorterSeq = %i, lengthLongerSeq = %i, first_j = %i, last_j = %i, first_i = %i, last_i = %i",
+     lengthShorterSeq, lengthLongerSeq, first_j, last_j, first_i, last_i);
+    }
+
     short cigar_position = 0;
 
     short beg_S;
@@ -286,9 +292,22 @@ gpu_bsw::createCIGAR(char* longCIGAR, char* CIGAR, int maxCIGAR,
 
         CIGAR[cigar_position]=longCIGAR[p];
         cigar_position++ ; 
-
+       
         cigar_position = intToCharPlusWrite(letter_count, CIGAR, cigar_position); 
         p++;
+
+        // if(myId==0 && myTId ==0&& DEBUG_PRINT == 1) {
+        //      for (int i = 0; i <= cigar_position; i++){
+        //          printf("%c",CIGAR[i]);
+        //      }
+        //      printf("\n");
+        //  }  
+        //  if(myId==0 && myTId ==0&& DEBUG_PRINT == 1) {
+        //      for (int i = 0; i <= cigar_position; i++){
+        //          printf("%c",longCIGAR[p]);
+        //      }
+        //      printf("\n");
+        //  }  
     }
     
     if ( end_S != 0){
@@ -298,12 +317,15 @@ gpu_bsw::createCIGAR(char* longCIGAR, char* CIGAR, int maxCIGAR,
     }    
     cigar_position--;
     char temp;
-
+    //code to reverse the cigar by swapping i and length of cigar - i
     for(int i = 0; i<(cigar_position)/2+1;i++){
         temp = CIGAR[i]; 
         CIGAR[i]=CIGAR[cigar_position-i]; 
         CIGAR[cigar_position-i] = temp; 
     }
+    
+    CIGAR[cigar_position+1]='\0';
+    
 
 }
 
@@ -594,9 +616,11 @@ gpu_bsw::traceBack(short current_i, short current_j, char* seqA_array, char* seq
     char matrix = 'H'; //initialize with H
 
     int counter = 0;
+    short prev_i;
+    short prev_j;
     bool continueTrace = true;
    
-    while(continueTrace && (current_i != 0) && (current_j != 0))
+    while(continueTrace && (current_i != 0) && (current_j !=0))
     {   
        temp_H = H_ptr[diagOffset[current_diagId] + current_locOffset];
        
@@ -655,10 +679,10 @@ gpu_bsw::traceBack(short current_i, short current_j, char* seqA_array, char* seq
                       printf("00000010\n");
                     }
 		                longCIGAR[counter] = seqBShorter ? 'I' : 'D';
-                    if (longCIGAR[counter-1] == 'X' ) {
-                        if (longCIGAR[counter] == 'I') {longCIGAR[counter-1] = 'I';}
-                        else if (longCIGAR[counter] == 'D') {longCIGAR[counter-1] = 'D';}
-                        }
+                    //if (longCIGAR[counter-1] == 'X' ) {
+                      //  if (longCIGAR[counter] == 'I') {longCIGAR[counter-1] = 'I';}
+                      //  else if (longCIGAR[counter] == 'D') {longCIGAR[counter-1] = 'D';}
+                      //  }
                     counter++;
                     next_i = current_i;
                     next_j = current_j - 1;
@@ -669,10 +693,10 @@ gpu_bsw::traceBack(short current_i, short current_j, char* seqA_array, char* seq
                       printf("00000000\n");
                     }
                     longCIGAR[counter] = seqBShorter ? 'I' : 'D';
-                    if (longCIGAR[counter-1] == 'X' ) {
-                        if (longCIGAR[counter] == 'I') {longCIGAR[counter-1] = 'I';}
-                        else if (longCIGAR[counter] == 'D') {longCIGAR[counter-1] = 'D';}
-                        }
+                    //if (longCIGAR[counter-1] == 'X' ) {
+                      //  if (longCIGAR[counter] == 'I') {longCIGAR[counter-1] = 'I';}
+                      //  else if (longCIGAR[counter] == 'D') {longCIGAR[counter-1] = 'D';}
+                      //  }
                     counter++;
                     next_i = current_i;
                     next_j = current_j - 1;
@@ -688,10 +712,10 @@ gpu_bsw::traceBack(short current_i, short current_j, char* seqA_array, char* seq
                       printf("00000001\n");
                     }
 		                longCIGAR[counter] = seqBShorter ? 'D' : 'I';
-                    if (longCIGAR[counter-1] == 'X' ) {
-                       if (longCIGAR[counter] == 'I') {longCIGAR[counter-1] = 'I';}
-                       else if (longCIGAR[counter] == 'D') {longCIGAR[counter-1] = 'D';}
-                    }
+                    //if (longCIGAR[counter-1] == 'X' ) {
+                      // if (longCIGAR[counter] == 'I') {longCIGAR[counter-1] = 'I';}
+                      // else if (longCIGAR[counter] == 'D') {longCIGAR[counter-1] = 'D';}
+                    //}
                     counter++;
                     next_i = current_i - 1;
                     next_j = current_j;
@@ -702,10 +726,10 @@ gpu_bsw::traceBack(short current_i, short current_j, char* seqA_array, char* seq
                       printf("00000000\n");
                     }
                     longCIGAR[counter] = seqBShorter ? 'D' : 'I';
-                    if (longCIGAR[counter-1] == 'X' ) {
-                       if (longCIGAR[counter] == 'I') {longCIGAR[counter-1] = 'I';}
-                       else if (longCIGAR[counter] == 'D') {longCIGAR[counter-1] = 'D';}
-                    }
+                    //if (longCIGAR[counter-1] == 'X' ) {
+                      // if (longCIGAR[counter] == 'I') {longCIGAR[counter-1] = 'I';}
+                      // else if (longCIGAR[counter] == 'D') {longCIGAR[counter-1] = 'D';}
+                    //}
                     counter++;
                     next_i = current_i - 1;
                     next_j = current_j;
@@ -721,6 +745,9 @@ gpu_bsw::traceBack(short current_i, short current_j, char* seqA_array, char* seq
         if(myId==0 && myTId ==0&& DEBUG_PRINT == 1) {
             printf("     %c\n",longCIGAR[counter]);
         }
+        prev_i = current_i; //record current values in case this is the stop location
+        prev_j = current_j;
+
         current_i = next_i;
         current_j = next_j;
 
@@ -737,8 +764,26 @@ gpu_bsw::traceBack(short current_i, short current_j, char* seqA_array, char* seq
         //counter++;   
         
    }
-   if ((current_i == 0) || (current_j == 0)) {longCIGAR[counter] = (shorterSeq[current_j] == longerSeq[current_i]) ? '=' : 'S';}
-   else {longCIGAR[counter-1]='\0'; current_i ++; current_j++; next_i ++; next_j ++;}
+   if ((current_i == 0) || (current_j == 0)) {
+      if(myId==0 && myTId ==0&& DEBUG_PRINT == 1) {
+            printf("counter = %i, current_j = %i, current_i = %i, shorterSeq[current_j] = %c, longerSeq[current_i] = %c ", 
+            counter, current_j, current_i, shorterSeq[current_j],longerSeq[current_i] );
+      }
+
+      if (shorterSeq[current_j] == longerSeq[current_i] ){
+        longCIGAR[counter] = '=';
+        longCIGAR[counter+1] = '\0';
+        prev_j = current_j;
+        prev_i = current_i;
+      }
+      else {
+        longCIGAR[counter]='\0';
+      }
+   } else {
+    longCIGAR[counter] = '\0';
+   }
+   current_i ++; current_j++; next_i ++; next_j ++;
+
 
   //  if(myId==0 && myTId ==0) {
   //           for (int i = 0; i <= counter; i++){
@@ -751,15 +796,15 @@ gpu_bsw::traceBack(short current_i, short current_j, char* seqA_array, char* seq
   //       } 
    
     if(lengthSeqA < lengthSeqB){  
-        seqB_align_begin[myId] = next_i;
-        seqA_align_begin[myId] = next_j;
+        seqB_align_begin[myId] = prev_i;
+        seqA_align_begin[myId] = prev_j;
     }else{
-        seqA_align_begin[myId] = next_i;
-        seqB_align_begin[myId] = next_j;
+        seqA_align_begin[myId] = prev_i;
+        seqB_align_begin[myId] = prev_j;
     }
 
     if (myTId == 0){
-     gpu_bsw::createCIGAR(longCIGAR, CIGAR, maxCIGAR, seqA, seqB, lengthShorterSeq, lengthLongerSeq, seqBShorter, first_j, current_j, first_i, current_i);
+     gpu_bsw::createCIGAR(longCIGAR, CIGAR, maxCIGAR, seqA, seqB, lengthShorterSeq, lengthLongerSeq, seqBShorter, first_j, prev_j, first_i, prev_i);
     }
 
     
