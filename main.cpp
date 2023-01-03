@@ -277,7 +277,7 @@ main(int argc, char* argv[])
  if(in_arg == "aa"){
  	proteinSampleRun(argv[2], argv[3], argv[4], argv[5]);
  }else{
-	cout << "VTest branch DNA" << endl;
+	cout << "DNA" << endl;
  	dnaSampleRun(argv[2], argv[3], argv[4], argv[5]);
  }
 
