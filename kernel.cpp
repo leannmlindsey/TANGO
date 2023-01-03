@@ -212,15 +212,6 @@ __device__ __host__ short
       }
     }
 
-    // max = array[ß3];
-    // for (int i = 2; i>=0; i--){
-    //     if (array[i] > max){
-    //       max = array[i];
-    //       *ind = i;
-    //     }
-    // }
-
-
     return max;
 }
 
@@ -745,25 +736,26 @@ gpu_bsw::traceBack(short current_i, short current_j, char* seqA_array, char* seq
         if(myId==0 && myTId ==0&& DEBUG_PRINT == 1) {
             printf("     %c\n",longCIGAR[counter]);
         }
-        prev_i = current_i; //record current values in case this is the stop location
-        prev_j = current_j;
+        if (continueTrace != false){
+          prev_i = current_i; //record current values in case this is the stop location
+          prev_j = current_j;
 
-        current_i = next_i;
-        current_j = next_j;
+          current_i = next_i;
+          current_j = next_j;
 
-        current_diagId    = current_i + current_j;
-        current_locOffset = 0;
+          current_diagId    = current_i + current_j;
+          current_locOffset = 0;
 
-        if(current_diagId < maxSize + 1)
-        {
+          if(current_diagId < maxSize + 1)
+          {
             current_locOffset = current_j;
-        } else {
+          } else {
             unsigned short myOff2 = current_diagId - maxSize;
             current_locOffset     = current_j - myOff2;
-        }
+          }
         //counter++;   
-        
-   }
+        }
+  }
    if ((current_i == 0) || (current_j == 0)) {
       if(myId==0 && myTId ==0&& DEBUG_PRINT == 1) {
             printf("counter = %i, current_j = %i, current_i = %i, shorterSeq[current_j] = %c, longerSeq[current_i] = %c ", 
