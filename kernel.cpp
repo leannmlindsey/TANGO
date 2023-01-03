@@ -202,8 +202,6 @@ __device__ __host__ short
       max = 0;
       *ind = 3;
     }
-    
-    // //findMaxFour(diag_score, _curr_F, _curr_E, 0, 
 
     for (int i=1; i<4; i++){
       if (array[i] > max){
@@ -221,7 +219,7 @@ gpu_bsw::intToCharPlusWrite(int num, char* CIGAR, short cigar_position)
     int last_digit = 0;
     int digit_length = 0;
     char digit_array[5];
-    //printf("num = %d, cigar_position = %d\n", num, cigar_position);
+   
     // convert the int num to ASCII digit by digit and record in a digit_array
     while (num != 0){
         last_digit = num%10;
@@ -235,7 +233,7 @@ gpu_bsw::intToCharPlusWrite(int num, char* CIGAR, short cigar_position)
         CIGAR[cigar_position]=digit_array[q];
         cigar_position++; 
     }
-    //printf("cigar_position = %d\n", cigar_position);
+  
     return cigar_position;
 }
 
@@ -244,13 +242,6 @@ gpu_bsw::createCIGAR(char* longCIGAR, char* CIGAR, int maxCIGAR,
         const char* seqA, const char* seqB, unsigned lengthShorterSeq, unsigned lengthLongerSeq, 
         bool seqBShorter, short first_j, short last_j, short first_i, short last_i) 
 {
-    int myId = blockIdx.x;
-    int myTId = threadIdx.x;
-    if(myId==0 && myTId ==0 && DEBUG_PRINT == 1) {
-     printf("made it to CIGAR. lengthShorterSeq = %i, lengthLongerSeq = %i, first_j = %i, last_j = %i, first_i = %i, last_i = %i",
-     lengthShorterSeq, lengthLongerSeq, first_j, last_j, first_i, last_i);
-    }
-
     short cigar_position = 0;
 
     short beg_S;
@@ -287,18 +278,6 @@ gpu_bsw::createCIGAR(char* longCIGAR, char* CIGAR, int maxCIGAR,
         cigar_position = intToCharPlusWrite(letter_count, CIGAR, cigar_position); 
         p++;
 
-        // if(myId==0 && myTId ==0&& DEBUG_PRINT == 1) {
-        //      for (int i = 0; i <= cigar_position; i++){
-        //          printf("%c",CIGAR[i]);
-        //      }
-        //      printf("\n");
-        //  }  
-        //  if(myId==0 && myTId ==0&& DEBUG_PRINT == 1) {
-        //      for (int i = 0; i <= cigar_position; i++){
-        //          printf("%c",longCIGAR[p]);
-        //      }
-        //      printf("\n");
-        //  }  
     }
     
     if ( end_S != 0){
@@ -325,8 +304,7 @@ gpu_bsw::traceBack(short current_i, short current_j, char* seqA_array, char* seq
                     unsigned* prefix_lengthB, short* seqA_align_begin, short* seqA_align_end,
                     short* seqB_align_begin, short* seqB_align_end, unsigned const maxMatrixSize, int maxCIGAR,
                     char* longCIGAR, char* CIGAR, char* H_ptr, unsigned long* diagOffset)
-{   //printf("current_i = %d, current_j = %d\n", current_i, current_j);
-    
+{   
     int myId = blockIdx.x;
     int myTId = threadIdx.x;
     
@@ -361,7 +339,7 @@ gpu_bsw::traceBack(short current_i, short current_j, char* seqA_array, char* seq
     const char* shorterSeq = lengthSeqA < lengthSeqB ? seqA : seqB; 
     unsigned lengthShorterSeq = lengthSeqA < lengthSeqB ? lengthSeqA : lengthSeqB;  
     unsigned lengthLongerSeq = lengthSeqA < lengthSeqB ? lengthSeqB : lengthSeqA;    
-    bool seqBShorter = lengthSeqA < lengthSeqB ? false : true;  //need to keep track of whether query or ref is shorter for CIGAR 
+    bool seqBShorter = lengthSeqA < lengthSeqB ? false : true;  //need to keep track of whether query or ref is shorter for I or D in CIGAR 
 
     current_diagId    = current_i + current_j;
     current_locOffset = 0;
@@ -389,7 +367,7 @@ gpu_bsw::traceBack(short current_i, short current_j, char* seqA_array, char* seq
 
     short first_j = current_j; //recording the first_j, first_i values for use in calculating S
     short first_i = current_i;
-    char matrix = 'H'; //initialize with H
+    char matrix = 'H'; //initialize with H 
 
     int counter = 0;
     short prev_i;
@@ -399,11 +377,6 @@ gpu_bsw::traceBack(short current_i, short current_j, char* seqA_array, char* seq
     while(continueTrace && (current_i != 0) && (current_j !=0))
     {   
        temp_H = H_ptr[diagOffset[current_diagId] + current_locOffset];
-       
-       
-         if(myId==0 && myTId ==0 && DEBUG_PRINT == 1) {
-             printf("current_i:%d, current_j:%d, %c , %c, %d\n",current_i, current_j, shorterSeq[current_j], longerSeq[current_i],counter);
-         } 
 
         //write the current value into longCIGAR then assign next_i
         if (matrix == 'H') { 
@@ -414,9 +387,6 @@ gpu_bsw::traceBack(short current_i, short current_j, char* seqA_array, char* seq
             switch (temp_H & 0b00001100){    
                 case 0b00001100 :
                     matrix = 'H';
-                    if(myId==0 && myTId==0&& DEBUG_PRINT == 1){
-                      printf("00001100\n");
-                    }
                     longCIGAR[counter] = shorterSeq[current_j] == longerSeq[current_i] ? '=' : 'X';
                     counter++;
                     next_i = current_i - 1;
@@ -424,103 +394,52 @@ gpu_bsw::traceBack(short current_i, short current_j, char* seqA_array, char* seq
                     break;
                 case 0b00001000 :
                     matrix = 'F';
-                    if(myId==0 && myTId==0&& DEBUG_PRINT == 1){
-                      printf("00001000\n");
-                    }
                     next_i = current_i;
                     next_j = current_j;
                     break;
                 case 0b00000100 :
                     matrix = 'E';
-                    if(myId==0 && myTId==0&& DEBUG_PRINT == 1){
-                      printf("00000100\n");
-                    }
                     next_i = current_i;
                     next_j = current_j;
                     break;
                  case 0b00000000 : 
                     continueTrace = false;
-                    if(myId==0 && myTId==0&& DEBUG_PRINT == 1){
-                      printf("00000000\n");
-                    }
                     break;
             }
         } else if (matrix == 'E'){
-            if(myId==0 && myTId==0&& DEBUG_PRINT == 1){
-              printf("in matrix E");
-            }
             switch (temp_H & 0b00000010){
                 case 0b00000010 :
-                    if(myId==0 && myTId==0&& DEBUG_PRINT == 1){
-                      printf("00000010\n");
-                    }
 		                longCIGAR[counter] = seqBShorter ? 'I' : 'D';
-                    //if (longCIGAR[counter-1] == 'X' ) {
-                      //  if (longCIGAR[counter] == 'I') {longCIGAR[counter-1] = 'I';}
-                      //  else if (longCIGAR[counter] == 'D') {longCIGAR[counter-1] = 'D';}
-                      //  }
                     counter++;
                     next_i = current_i;
                     next_j = current_j - 1;
                     break;
                 case 0b00000000 :
                     matrix = 'H';
-                    if(myId==0 && myTId==0&& DEBUG_PRINT == 1){
-                      printf("00000000\n");
-                    }
                     longCIGAR[counter] = seqBShorter ? 'I' : 'D';
-                    //if (longCIGAR[counter-1] == 'X' ) {
-                      //  if (longCIGAR[counter] == 'I') {longCIGAR[counter-1] = 'I';}
-                      //  else if (longCIGAR[counter] == 'D') {longCIGAR[counter-1] = 'D';}
-                      //  }
                     counter++;
                     next_i = current_i;
                     next_j = current_j - 1;
                     break;
             }
         } else if (matrix == 'F'){
-            if(myId==0 && myTId==0&& DEBUG_PRINT == 1){
-              printf("in matrix F");
-            }
             switch (temp_H & 0b00000001){
                 case 0b00000001 :
-                    if(myId==0 && myTId==0&& DEBUG_PRINT == 1){
-                      printf("00000001\n");
-                    }
 		                longCIGAR[counter] = seqBShorter ? 'D' : 'I';
-                    //if (longCIGAR[counter-1] == 'X' ) {
-                      // if (longCIGAR[counter] == 'I') {longCIGAR[counter-1] = 'I';}
-                      // else if (longCIGAR[counter] == 'D') {longCIGAR[counter-1] = 'D';}
-                    //}
                     counter++;
                     next_i = current_i - 1;
                     next_j = current_j;
                     break;
                 case 0b00000000 :
                     matrix = 'H';
-                    if(myId==0 && myTId==0&& DEBUG_PRINT == 1){
-                      printf("00000000\n");
-                    }
                     longCIGAR[counter] = seqBShorter ? 'D' : 'I';
-                    //if (longCIGAR[counter-1] == 'X' ) {
-                      // if (longCIGAR[counter] == 'I') {longCIGAR[counter-1] = 'I';}
-                      // else if (longCIGAR[counter] == 'D') {longCIGAR[counter-1] = 'D';}
-                    //}
                     counter++;
                     next_i = current_i - 1;
                     next_j = current_j;
                     break;
             }
         }
-        if(myId==0 && myTId ==0&& DEBUG_PRINT == 1) {
-             for (int i = 0; i <= counter; i++){
-                 printf("%c",longCIGAR[i]);
-             }
-             printf("\n");
-         }  
-        if(myId==0 && myTId ==0&& DEBUG_PRINT == 1) {
-            printf("     %c\n",longCIGAR[counter]);
-        }
+        
         if (continueTrace != false){
           prev_i = current_i; //record current values in case this is the stop location
           prev_j = current_j;
@@ -541,11 +460,8 @@ gpu_bsw::traceBack(short current_i, short current_j, char* seqA_array, char* seq
         //counter++;   
         }
   }
+   //handle edge cases
    if ((current_i == 0) || (current_j == 0)) {
-      if(myId==0 && myTId ==0&& DEBUG_PRINT == 1) {
-            printf("counter = %i, current_j = %i, current_i = %i, shorterSeq[current_j] = %c, longerSeq[current_i] = %c ", 
-            counter, current_j, current_i, shorterSeq[current_j],longerSeq[current_i] );
-      }
 
       if (shorterSeq[current_j] == longerSeq[current_i] ){
         longCIGAR[counter] = '=';
@@ -559,18 +475,7 @@ gpu_bsw::traceBack(short current_i, short current_j, char* seqA_array, char* seq
    } else {
     longCIGAR[counter] = '\0';
    }
-   current_i ++; current_j++; next_i ++; next_j ++;
-
-
-  //  if(myId==0 && myTId ==0) {
-  //           for (int i = 0; i <= counter; i++){
-  //               printf("%c",longCIGAR[i]);
-  //           }
-  //           printf("\n\n");
-  //       }  
-  //       if(myId==0 && myTId ==0) {
-  //           printf("current_i:%d, current_j:%d, %c , %c, %d\n",current_i, current_j, shorterSeq[current_j], longerSeq[current_i], counter);
-  //       } 
+   current_i ++; current_j++; next_i ++; next_j ++; 
    
     if(lengthSeqA < lengthSeqB){  
         seqB_align_begin[myId] = prev_i;
@@ -584,8 +489,6 @@ gpu_bsw::traceBack(short current_i, short current_j, char* seqA_array, char* seq
      gpu_bsw::createCIGAR(longCIGAR, CIGAR, maxCIGAR, seqA, seqB, lengthShorterSeq, lengthLongerSeq, seqBShorter, first_j, prev_j, first_i, prev_i);
     }
 
-    
-    // *tick_out = tick;
 }
 
 __global__ void
@@ -637,7 +540,6 @@ gpu_bsw::sequence_dna_kernel_traceback(char* seqA_array, char* seqB_array, unsig
     unsigned minSize = lengthSeqA < lengthSeqB ? lengthSeqA : lengthSeqB;
 
     H_ptr = H_ptr_array + (block_Id * maxMatrixSize);
-    //I = I_ptr_array + (block_Id * maxMatrixSize);
 
     longCIGAR = longCIGAR_array + (block_Id * maxCIGAR);
     CIGAR = CIGAR_array + (block_Id * maxCIGAR);
@@ -648,19 +550,15 @@ gpu_bsw::sequence_dna_kernel_traceback(char* seqA_array, char* seqB_array, unsig
 
 
 // shared memory space for storing longer of the two strings
-      //if (block_Id == 0 && thread_Id == 0) {printf("before memset - is_valid = %p, diagOffset = %p\n",is_valid, diagOffset);}
     memset(is_valid, 0, minSize);
     is_valid += minSize;
-      //if (block_Id == 0 && thread_Id == 0) {printf("after memset 1 - is_valid = %p, diagOffset = %p\n",is_valid, diagOffset);}
     memset(is_valid, 1, minSize);
-      //if (block_Id == 0 && thread_Id == 0) {printf("after memset 2 - is_valid = %p, diagOffset = %p\n",is_valid, diagOffset);}
     is_valid += minSize;
     memset(is_valid, 0, minSize);
-      //if (block_Id == 0 && thread_Id == 0) {printf("after memset 3 - is_valid = %p, diagOffset = %p \n",is_valid, diagOffset);}
 
     char myColumnChar;
     // the shorter of the two strings is stored in thread registers
-    char H_temp = 0;  //set all bits to 0 initially
+    char H_temp = 0;  //temp value of H stored in register until H, E and F are set then written to global; set all bits to 0 initially
 
     if(lengthSeqA < lengthSeqB)
     {
@@ -684,7 +582,7 @@ gpu_bsw::sequence_dna_kernel_traceback(char* seqA_array, char* seqB_array, unsig
     short thread_max_j = 0;// to maintain the DP cooirdinate j for the shorter string
     int ind;
 
-    //set up the prefixSum for diagonal offset look up table for H_ptr, E_ptr, F_ptr
+    //set up the prefixSum for diagonal offset look up table for H_ptr
     int    locSum = 0;
      
     for(int diag = 0; diag < lengthSeqA + lengthSeqB-1; diag++) 
@@ -709,17 +607,15 @@ gpu_bsw::sequence_dna_kernel_traceback(char* seqA_array, char* seqB_array, unsig
                 locSum += minSize + 1;
                 diagOffset[locDiagId] = locSum;
             }
-            diagOffset[lengthSeqA + lengthSeqB] = locSum + 2; //what is this for?
-            //if (block_Id == 0 && thread_Id == 0) {printf("inside diagOffset loop - is_valid = %p, diagOffset = %p, writing at index = %d, locDiagId * 4 = %d\n",is_valid, diagOffset, locDiagId, locDiagId*4);}
-            //printf("diag = %d, diagOffset = %d\n", locDiagId, diagOffset[locDiagId]);
+            diagOffset[lengthSeqA + lengthSeqB] = locSum + 2; 
+          
         }
     }
     
     __syncthreads(); //to make sure prefixSum is calculated before the threads start calculations.    
 
 
-  //initializing registers for storing diagonal values for three recent most diagonals (separate tables for
-  //H, E and F)
+  //initializing registers for storing diagonal values for three recent most diagonals (separate tables for H, E, F
     short _curr_H = 0, _curr_F = -100, _curr_E = -100; //-100 acts as neg infinity
     short _prev_H = 0, _prev_F = -100, _prev_E = -100;
     short _prev_prev_H = 0, _prev_prev_F = -100, _prev_prev_E = -100;
@@ -733,7 +629,6 @@ gpu_bsw::sequence_dna_kernel_traceback(char* seqA_array, char* seqB_array, unsig
    __shared__ short local_spill_prev_H[1024];
    __shared__ short local_spill_prev_prev_H[1024];
 
-    //unsigned      alignmentPad = 4 + (4 - totBytes % 4);
 
     __syncthreads(); // to make sure all shmem allocations have been initialized
 
@@ -754,9 +649,6 @@ gpu_bsw::sequence_dna_kernel_traceback(char* seqA_array, char* seqB_array, unsig
           locOffset            = j - myOff;
         }
 
-        //if (thread_Id == 0 && block_Id == 0) {
-          //printf("i = %d, j = %d, diagId = %d, locOffset = %d\n", i, j, diagId, locOffset);
-        //}
 
         is_valid = is_valid - (diag < minSize || diag >= maxSize); //move the pointer to left by 1 if cnd true
 
@@ -824,7 +716,7 @@ gpu_bsw::sequence_dna_kernel_traceback(char* seqA_array, char* seqB_array, unsig
           
           if (fVal > hfVal){ //record F value in H_temp 0b00000001
                 H_temp = H_temp | 1;
-          } else { //record F value in H_ptr 0b00000000
+          } else { //record F value in H_temp 0b00000000
                 H_temp = H_temp & (~1);
           }
 
@@ -850,8 +742,6 @@ gpu_bsw::sequence_dna_kernel_traceback(char* seqA_array, char* seqB_array, unsig
           if(warpId == 0 && laneId == 0) final_prev_prev_H = 0;
           short diag_score = final_prev_prev_H + ((longer_seq[i] == myColumnChar) ? matchScore : misMatchScore);
           _curr_H = findMaxFour(diag_score, _curr_F, _curr_E, 0, &ind);
-           //if (thread_Id == 117 ||thread_Id == 118 ||thread_Id == 119 ||thread_Id == 120 ) printf("j = %d, myColumnChar = %c, i = %d, comparChar = %c, _curr_H = %d, _curr_E = %d, _curr_F = %d, diag_score = %d\n",
-                          //  j, myColumnChar, i, longer_seq[i], _curr_H, _curr_E, _curr_F, diag_score);
           
           if (ind == 0) { // diagonal cell is max, set bits to 0b00001100
                 H_temp = H_temp | 4;     // set bit 0b00000100
@@ -871,20 +761,11 @@ gpu_bsw::sequence_dna_kernel_traceback(char* seqA_array, char* seqB_array, unsig
                  //printf("*");
           }
           H_ptr[diagOffset[diagId] + locOffset] =  H_temp;
-          //I[diagOffset[diagId] + locOffset] = _curr_H;
-          //if (block_Id == 0 && thread_Id == 122) {
-            //printf("i = %d, j = %d, diag_score = %d, _curr_F = %d, _curr_E = %d, maxscore = _curr_H = %d, ind = %d\n",
-                    //i, j, diag_score, _curr_F, _curr_E, _curr_H, ind);
-            //printf("IN LOOP TRACEBACK: i = %d, j = %d, I=%d\n", i, j, I[diagOffset[27]+9]);
-          //}
-          //I[diagOffset[diagId] + locOffset] = _curr_E;
-          //I[diagOffset[diagId] + locOffset] = _curr_F;
       
           thread_max_i = (thread_max >= _curr_H) ? thread_max_i : i;
           thread_max_j = (thread_max >= _curr_H) ? thread_max_j : thread_Id;
           thread_max   = (thread_max >= _curr_H) ? thread_max : _curr_H;
-          //if (block_Id == 0)
-            //printf("i = %d, j = %d, _curr_H = %d, thread_max_i = %d, thread_max_j = %d, thread_max = %d\n",i, thread_Id, _curr_H, thread_max_i, thread_max_j, thread_max);
+        
           i++;
        }
       __syncthreads(); 
@@ -893,16 +774,11 @@ gpu_bsw::sequence_dna_kernel_traceback(char* seqA_array, char* seqB_array, unsig
 
     thread_max = blockShuffleReduce_with_index(thread_max, thread_max_i, thread_max_j, minSize);  // thread 0 will have the correct values
     
-    // if(thread_Id == 0) {
-    //   printf("thread_max_j = %d, thread_max_i = %d, thread_max = %d\n",thread_max_i, thread_max_j, thread_max);
-    // } 
-    
     if(thread_Id == 0)
     {
         short current_i = thread_max_i;
         short current_j = thread_max_j;
-        //if (block_Id == 0)
-          //printf("thread_max_i = %d, thread_max_j = %d\n", thread_max_i, thread_max_j);
+      
         if(lengthSeqA < lengthSeqB)
         {
           seqB_align_end[block_Id] = thread_max_i;
@@ -915,21 +791,6 @@ gpu_bsw::sequence_dna_kernel_traceback(char* seqA_array, char* seqB_array, unsig
           seqB_align_end[block_Id] = thread_max_j;
           top_scores[block_Id] = thread_max;
         }
-        //printf("BEFORE TRACEBACK: I=%d\n", I[diagOffset[23]+9]);
-        //printf("before calling TRACEBACK, BLOCK #%d, current_i = %d, current_j = %d\n", block_Id, current_i, current_j);
-        //if (DEBUG_PRINT == 1) {
-          //gpu_bsw::printMatrix(H_ptr, I, seqA, seqB, lengthSeqA, lengthSeqB, diagOffset,maxSize);
-        //}
-        //unsigned short diagId    = current_i + current_j;
-        //unsigned short locOffset = 0;
-
-        //if(diagId < maxSize + 1)
-        //{ 
-            //locOffset = current_j;
-        //} else {
-            //unsigned short myOff2 = diagId - maxSize;
-            //locOffset     = current_j - myOff2;
-        //}
         
         gpu_bsw::traceBack(current_i, current_j, seqA_array, seqB_array, prefix_lengthA, 
                     prefix_lengthB, seqA_align_begin, seqA_align_end,
@@ -1257,18 +1118,6 @@ gpu_bsw::sequence_aa_kernel_traceback(char* seqA_array, char* seqB_array, unsign
       top_scores[block_Id] = thread_max;
       }
 
-      // unsigned short diagId    = current_i + current_j;
-      // unsigned short locOffset = 0;
-
-      // if(diagId < maxSize + 1)
-      // {
-      //     locOffset = current_j;
-      // } else {
-      //     unsigned short myOff2 = diagId - maxSize;
-      //     locOffset     = current_j - myOff2;
-      // }
-        //printf("diagId = %d, locOffset = %d, diagOffset[diagId] + locOffset = %d\n", diagId, locOffset,diagOffset[diagId] + locOffset );
-        //printf("H_ptr[] = %c\n", H_ptr[diagOffset[diagId] + locOffset]);
       gpu_bsw::traceBack(current_i, current_j, seqA_array, seqB_array, prefix_lengthA, 
                     prefix_lengthB, seqA_align_begin, seqA_align_end,
                     seqB_align_begin, seqB_align_end, maxMatrixSize, maxCIGAR,

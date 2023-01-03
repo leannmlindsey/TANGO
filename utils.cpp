@@ -4,9 +4,7 @@ unsigned getMaxLength (std::vector<std::string> v)
   unsigned maxLength = 0;
   for(auto str : v){
     if(maxLength < str.length()){
-      //printf("maxLength was %d",maxLength);
       maxLength = str.length();
-      //printf(",maxLength changed to %d\n",maxLength);
     }
   }
   return maxLength;
