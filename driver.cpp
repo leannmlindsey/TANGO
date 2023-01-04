@@ -21,7 +21,7 @@ gpu_bsw_driver::kernel_driver_dna(std::vector<std::string> reads, std::vector<st
     short matchScore = scores[0], misMatchScore = scores[1], startGap = scores[2], extendGap = scores[3];
     unsigned maxContigSize = getMaxLength(contigs);
     unsigned maxReadSize = getMaxLength(reads);
-    unsigned maxCigar = (maxContigSize > maxReadSize ) ? 3*maxContigSize : 3*maxReadSize;
+    unsigned maxCigar = (maxContigSize > maxReadSize ) ? maxContigSize : maxReadSize; //took out *3 here because most CIGARs are within the lenght of the contig size.
   
     unsigned const maxMatrixSize = (maxContigSize + 1 ) * (maxReadSize + 1);
     unsigned totalAlignments = contigs.size(); // assume that read and contig vectors are same length
@@ -39,7 +39,7 @@ gpu_bsw_driver::kernel_driver_dna(std::vector<std::string> reads, std::vector<st
     initialize_alignments(alignments, totalAlignments, maxCIGAR); // pinned memory allocation
     auto start = NOW;
     printf("NBLOCKS = %d, alignmentsPerDevice = %d, leftover_device = %d, max_per_device = %d", NBLOCKS, alignmentsPerDevice, leftOver_device, max_per_device);
-    
+
     size_t tot_mem_req_per_aln = maxReadSize + maxContigSize + 2 * sizeof(int) + 6 * sizeof(short) +  (1.25*maxReadSize * maxContigSize) + 2 * (maxCigar);
     
     #pragma omp parallel
@@ -66,8 +66,9 @@ gpu_bsw_driver::kernel_driver_dna(std::vector<std::string> reads, std::vector<st
         std::cout<<"Mem (bytes) avail on device "<<myGPUid<<":"<<(long unsigned)gpu_mem_avail<<"\n";
         std::cout<<"Mem (bytes) using on device "<<myGPUid<<":"<<gpu_mem_avail*factor<<"\n";
         std::cout<<"Diff "<<myGPUid<<":"<<(long unsigned)gpu_mem_avail-gpu_mem_avail*factor<<"\n";
-        std::cout<<"MaxRead = "<<maxReadSize<<", MaxRef = "<<maxContigSize<<", Memory required per alignment: "<<tot_mem_req_per_aln<<"\n";
+        std::cout<<"MaxRead = "<<maxReadSize<<", MaxRef = "<<maxContigSize<<", maxCigar = "<<maxCigar<<", Memory required per alignment: "<<tot_mem_req_per_aln<<"\n";
         std::cout<<"Maximum Alignments: "<<max_alns_gpu<<"\n";
+
         
 
         int BLOCKS_l = alignmentsPerDevice;
