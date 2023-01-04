@@ -10,7 +10,7 @@
 
 using namespace std;
 
-void proteinSampleRun(string refFile, string queFile, string out_file, char* resultFile){
+void proteinSampleRun(string refFile, string queFile, string out_file){
   vector<string> G_sequencesA, G_sequencesB;
   string myInLine;
   int largestA = 0, largestB = 0, totSizeA = 0, totSizeB = 0;
@@ -149,7 +149,7 @@ void proteinSampleRun(string refFile, string queFile, string out_file, char* res
 }
 
 
-void dnaSampleRun(string refFile, string queFile, string out_file, char* resultFile){
+void dnaSampleRun(string refFile, string queFile, string out_file){
   vector<string> G_sequencesA,
       G_sequencesB;
 
@@ -244,11 +244,11 @@ main(int argc, char* argv[])
 {
   string in_arg = argv[1];
 
- if(in_arg == "aa"){
- 	proteinSampleRun(argv[2], argv[3], argv[4], argv[5]);
+ if(in_arg == "AA"){
+ 	proteinSampleRun(argv[2], argv[3], argv[4]);
  }else{
 	cout << "DNA" << endl;
- 	dnaSampleRun(argv[2], argv[3], argv[4], argv[5]);
+ 	dnaSampleRun(argv[2], argv[3], argv[4]);
  }
 
     return 0;
