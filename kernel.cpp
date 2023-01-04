@@ -353,12 +353,6 @@ gpu_bsw::traceBack(short current_i, short current_j, char* seqA_array, char* seq
         current_locOffset    = current_j - myOff;
     }
 
-    if(myId == 0 && myTId ==0 && DEBUG_PRINT == 1){
-        printf("Beginning Traceback on Block #%d\n", myId);
-        printf("diagID:%d locoffset:%d current_i:%d, current_j:%d, Block #%d\n\n",current_diagId, current_locOffset, current_i, current_j, myId);
-        printf("BLOCK #%d, first H_ptr[] = %c, H_ptr[0] = %c\n", myId, H_ptr[diagOffset[current_diagId] + current_locOffset], H_ptr[0]);                
-        
-    }
     char temp_H;
     temp_H = H_ptr[diagOffset[current_diagId] + current_locOffset];
     short next_i;
@@ -380,9 +374,6 @@ gpu_bsw::traceBack(short current_i, short current_j, char* seqA_array, char* seq
 
         //write the current value into longCIGAR then assign next_i
         if (matrix == 'H') { 
-            if(myId==0 && myTId==0&& DEBUG_PRINT == 1){
-              printf("in matrix H");
-            }
             
             switch (temp_H & 0b00001100){    
                 case 0b00001100 :

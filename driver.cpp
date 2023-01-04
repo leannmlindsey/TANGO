@@ -21,7 +21,7 @@ gpu_bsw_driver::kernel_driver_dna(std::vector<std::string> reads, std::vector<st
     short matchScore = scores[0], misMatchScore = scores[1], startGap = scores[2], extendGap = scores[3];
     unsigned maxContigSize = getMaxLength(contigs);
     unsigned maxReadSize = getMaxLength(reads);
-    unsigned maxCigar = (maxContigSize > maxReadSize ) ? maxContigSize : maxReadSize; //took out *3 here because most CIGARs are within the lenght of the contig size.
+    unsigned maxCigar = (maxContigSize > maxReadSize ) ? 3*maxContigSize : 3*maxReadSize; 
   
     unsigned const maxMatrixSize = (maxContigSize + 1 ) * (maxReadSize + 1);
     unsigned totalAlignments = contigs.size(); // assume that read and contig vectors are same length
