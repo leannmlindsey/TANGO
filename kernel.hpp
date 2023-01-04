@@ -8,6 +8,7 @@
 #define ENCOD_MAT_SIZE 91
 #define SCORE_MAT_SIZE 576
 #define DEBUG_PRINT 0
+#define TIMING_PRINT 1
 
 namespace gpu_bsw{
 __device__ short

@@ -188,6 +188,8 @@ gpu_bsw_driver::kernel_driver_dna(std::vector<std::string> reads, std::vector<st
             diff = end - start;
 
             total_packing += packing_dur.count();
+            if (TIMING_PRINT == 1){std::cout << "Total Execution Time (seconds) - Sequence Packing:"<< diff.count() <<std::endl;}
+
 
             asynch_mem_copies_htd(&gpu_data, offsetA_h, offsetB_h, strA, strA_d, strB, strB_d, half_length_A, half_length_B, totalLengthA, totalLengthB, sequences_per_stream, sequences_stream_leftover, streams_cuda);
             unsigned minSize = (maxReadSize < maxContigSize) ? maxReadSize : maxContigSize;
@@ -201,6 +203,8 @@ gpu_bsw_driver::kernel_driver_dna(std::vector<std::string> reads, std::vector<st
 
             end  = NOW;
             diff = end - start;
+            if (TIMING_PRINT == 1){std::cout << "Total Execution Time (seconds) - Move sequence data to device:"<< diff.count() <<std::endl;}
+
                     
             gpu_bsw::sequence_dna_kernel_traceback<<<sequences_per_stream, minSize, ShmemBytes, streams_cuda[0]>>>(
                 strA_d, strB_d, gpu_data.offset_ref_gpu, gpu_data.offset_query_gpu, gpu_data.ref_start_gpu,
@@ -222,6 +226,7 @@ gpu_bsw_driver::kernel_driver_dna(std::vector<std::string> reads, std::vector<st
 
             end  = NOW;
             diff = end - start;
+            if (TIMING_PRINT == 1){std::cout << "Total Execution Time (seconds) - DNA Forward kernel:"<< diff.count() <<std::endl;}
     
             asynch_mem_copies_dth(&gpu_data, alAbeg, alBbeg, alAend, alBend, top_scores_cpu, CIGAR_cpu, sequences_per_stream, sequences_stream_leftover, streams_cuda, maxCIGAR);
 
@@ -232,12 +237,12 @@ gpu_bsw_driver::kernel_driver_dna(std::vector<std::string> reads, std::vector<st
                  top_scores_cpu += stringsPerIt;
                  CIGAR_cpu += stringsPerIt*maxCIGAR;
 
-	        cudaStreamSynchronize (streams_cuda[0]);
+	          cudaStreamSynchronize (streams_cuda[0]);
             cudaStreamSynchronize (streams_cuda[1]);
 
             end  = NOW;
             diff = end - start;
-           
+            if (TIMING_PRINT == 1){std::cout << "Total Execution Time (seconds) - Copy results from device to host:"<< diff.count() <<std::endl;}
 
         }  // for iterations end here
 
@@ -252,7 +257,10 @@ gpu_bsw_driver::kernel_driver_dna(std::vector<std::string> reads, std::vector<st
 
         for(int i = 0; i < NSTREAMS; i++)
           cudaStreamDestroy(streams_cuda[i]);
-
+        if (TIMING_PRINT == 1){
+          std::cout <<"cpu time:"<<total_time_cpu<<std::endl;
+          std::cout <<"packing time:"<<total_packing<<std::endl;
+        }
         #pragma omp barrier
     }  // parallel pragma ends
 
