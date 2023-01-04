@@ -38,7 +38,8 @@ gpu_bsw_driver::kernel_driver_dna(std::vector<std::string> reads, std::vector<st
   
     initialize_alignments(alignments, totalAlignments, maxCIGAR); // pinned memory allocation
     auto start = NOW;
-
+    printf("NBLOCKS = %d, alignmentsPerDevice = %d, leftover_device = %d, max_per_device = %d", NBLOCKS, alignmentsPerDevice, leftOver_device, max_per_device);
+    
     size_t tot_mem_req_per_aln = maxReadSize + maxContigSize + 2 * sizeof(int) + 6 * sizeof(short) +  (1.25*maxReadSize * maxContigSize) + 2 * (maxCigar);
     
     #pragma omp parallel
