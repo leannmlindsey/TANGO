@@ -451,10 +451,19 @@ gpu_bsw_driver::kernel_driver_aa(std::vector<std::string> reads, std::vector<std
           asynch_mem_copies_htd(&gpu_data, offsetA_h, offsetB_h, strA, strA_d, strB, strB_d, half_length_A, half_length_B, totalLengthA, totalLengthB, sequences_per_stream, sequences_stream_leftover, streams_cuda);
           unsigned minSize = (maxReadSize < maxContigSize) ? maxReadSize : maxContigSize;
           unsigned maxSize = (maxReadSize > maxContigSize) ? maxReadSize : maxContigSize;
-          unsigned totShmem = 6 * (minSize + 1) * sizeof(long) + 6 * minSize + (minSize & 1) + maxSize + SCORE_MAT_SIZE * sizeof(short) + ENCOD_MAT_SIZE * sizeof(short); //check this
+          unsigned totShmem = 3 * (minSize + 1) * sizeof(long) + (minSize + 1 + maxSize + 1) * sizeof(long) + SCORE_MAT_SIZE * sizeof(short) + ENCOD_MAT_SIZE * sizeof(short); 
          
           unsigned alignmentPad = 4 + (4 - totShmem % 4);
-          size_t   ShmemBytes = totShmem + alignmentPad;
+          size_t   ShmemBytes = totShmem + alignmentPad + sizeof(long) * (maxContigSize + maxReadSize + 2);
+
+	    //unsigned minSize = (maxReadSize < maxContigSize) ? maxReadSize : maxContigSize;
+            //unsigned maxSize = (maxReadSize > maxContigSize) ? maxReadSize : maxContigSize;
+            //unsigned totShmem = (3 * (minSize + 1) * sizeof(long)) + (minSize+1 + maxSize + 1) * sizeof(long);
+            //unsigned alignmentPad = 4 + (4 - totShmem % 4);
+            //size_t   ShmemBytes = totShmem + alignmentPad + sizeof(long) * (maxContigSize + maxReadSize + 2 );
+
+
+
           if(ShmemBytes > 48000)
               cudaFuncSetAttribute(gpu_bsw::sequence_aa_kernel_traceback, cudaFuncAttributeMaxDynamicSharedMemorySize, ShmemBytes);
 

@@ -127,9 +127,9 @@ void proteinSampleRun(string refFile, string queFile, string out_file){
    for(int k = 0; k < G_sequencesA.size(); k++){
          seq_cigar = str_ptr;
          results_file<<results_test.top_scores[k]<<"\t"
-                 <<results_test.ref_begin[k]-1<<"\t"
+                 <<results_test.ref_begin[k]<<"\t"
                  <<results_test.ref_end[k]<<"\t"
-                 <<results_test.query_begin[k]-1<<"\t"
+                 <<results_test.query_begin[k]<<"\t"
                  <<results_test.query_end[k]<<"\t"
                  <<seq_cigar
                  <<endl;
@@ -244,7 +244,7 @@ main(int argc, char* argv[])
 {
   string in_arg = argv[1];
 
- if(in_arg == "AA"){
+ if(in_arg == "aa"){
  	proteinSampleRun(argv[2], argv[3], argv[4]);
  }else{
 	cout << "DNA" << endl;
