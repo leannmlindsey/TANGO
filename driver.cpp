@@ -200,7 +200,7 @@ gpu_bsw_driver::kernel_driver_dna(std::vector<std::string> reads, std::vector<st
             unsigned alignmentPad = 4 + (4 - totShmem % 4);
             size_t   ShmemBytes = totShmem + alignmentPad + sizeof(long) * (maxContigSize + maxReadSize + 2 );
              
-            if(ShmemBytes > 48000)
+            if(ShmemBytes > 38000)
                 cudaFuncSetAttribute(gpu_bsw::sequence_dna_kernel_traceback, cudaFuncAttributeMaxDynamicSharedMemorySize, ShmemBytes);
 
             end  = NOW;
@@ -274,6 +274,7 @@ gpu_bsw_driver::kernel_driver_dna(std::vector<std::string> reads, std::vector<st
 void
 gpu_bsw_driver::kernel_driver_aa(std::vector<std::string> reads, std::vector<std::string> contigs, gpu_bsw_driver::alignment_results *alignments, int maxCIGAR, short scoring_matrix[], short openGap, short extendGap, float factor)
 {
+ 
     unsigned maxContigSize = getMaxLength(contigs);
     unsigned maxReadSize = getMaxLength(reads);
 
@@ -331,6 +332,7 @@ gpu_bsw_driver::kernel_driver_aa(std::vector<std::string> reads, std::vector<std
         std::cout<<"MaxRead = "<<maxReadSize<<", MaxRef = "<<maxContigSize<<", Memory required per alignment: "<<tot_mem_req_per_aln<<"\n";
         std::cout<<"Maximum Alignments: "<<max_alns_gpu<<"\n";
 
+      
       int BLOCKS_l = alignmentsPerDevice;
       if(my_cpu_id == deviceCount - 1)
           BLOCKS_l += leftOver_device;
@@ -349,7 +351,7 @@ gpu_bsw_driver::kernel_driver_aa(std::vector<std::string> reads, std::vector<std
       short* alBend = alignments->query_end + my_cpu_id * alignmentsPerDevice;  // memory on CPU for copying the results
       short* top_scores_cpu = alignments->top_scores + my_cpu_id * alignmentsPerDevice;
       char* CIGAR_cpu = alignments->CIGAR + my_cpu_id * alignmentsPerDevice * maxCIGAR;
-
+      
       unsigned* offsetA_h;
       cudaMallocHost(&offsetA_h, sizeof(int)*(stringsPerIt + leftOvers));
       unsigned* offsetB_h;
@@ -369,7 +371,7 @@ gpu_bsw_driver::kernel_driver_aa(std::vector<std::string> reads, std::vector<std
       auto start2 = NOW;
      
       for(int perGPUIts = 0; perGPUIts < its; perGPUIts++)
-      {
+      {  
           auto packing_start = NOW;
           int                                      blocksLaunched = 0;
           std::vector<std::string>::const_iterator beginAVec;
@@ -447,7 +449,7 @@ gpu_bsw_driver::kernel_driver_aa(std::vector<std::string> reads, std::vector<std
           std::chrono::duration<double> packing_dur = packing_end - packing_start;
 
           total_packing += packing_dur.count();
-
+         
           asynch_mem_copies_htd(&gpu_data, offsetA_h, offsetB_h, strA, strA_d, strB, strB_d, half_length_A, half_length_B, totalLengthA, totalLengthB, sequences_per_stream, sequences_stream_leftover, streams_cuda);
           unsigned minSize = (maxReadSize < maxContigSize) ? maxReadSize : maxContigSize;
           unsigned maxSize = (maxReadSize > maxContigSize) ? maxReadSize : maxContigSize;
@@ -455,18 +457,10 @@ gpu_bsw_driver::kernel_driver_aa(std::vector<std::string> reads, std::vector<std
          
           unsigned alignmentPad = 4 + (4 - totShmem % 4);
           size_t   ShmemBytes = totShmem + alignmentPad + sizeof(long) * (maxContigSize + maxReadSize + 2);
-
-	    //unsigned minSize = (maxReadSize < maxContigSize) ? maxReadSize : maxContigSize;
-            //unsigned maxSize = (maxReadSize > maxContigSize) ? maxReadSize : maxContigSize;
-            //unsigned totShmem = (3 * (minSize + 1) * sizeof(long)) + (minSize+1 + maxSize + 1) * sizeof(long);
-            //unsigned alignmentPad = 4 + (4 - totShmem % 4);
-            //size_t   ShmemBytes = totShmem + alignmentPad + sizeof(long) * (maxContigSize + maxReadSize + 2 );
-
-
-
-          if(ShmemBytes > 48000)
+        
+          if(ShmemBytes > 38000){
               cudaFuncSetAttribute(gpu_bsw::sequence_aa_kernel_traceback, cudaFuncAttributeMaxDynamicSharedMemorySize, ShmemBytes);
-
+          }
 
           gpu_bsw::sequence_aa_kernel_traceback<<<sequences_per_stream, minSize, ShmemBytes, streams_cuda[0]>>>(
                 strA_d, strB_d, gpu_data.offset_ref_gpu, gpu_data.offset_query_gpu, gpu_data.ref_start_gpu,

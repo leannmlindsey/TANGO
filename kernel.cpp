@@ -303,7 +303,7 @@ __device__ void
 gpu_bsw::traceBack(short current_i, short current_j, char* seqA_array, char* seqB_array, unsigned* prefix_lengthA, 
                     unsigned* prefix_lengthB, short* seqA_align_begin, short* seqA_align_end,
                     short* seqB_align_begin, short* seqB_align_end, unsigned const maxMatrixSize, int maxCIGAR,
-                    char* longCIGAR, char* CIGAR, char* H_ptr, unsigned long* diagOffset)
+                    char* longCIGAR, char* CIGAR, char* H_ptr, uint32_t* diagOffset)
 {   
   
     int myId = blockIdx.x;
@@ -561,8 +561,8 @@ gpu_bsw::sequence_dna_kernel_traceback(char* seqA_array, char* seqB_array, unsig
 
      
     char* longer_seq;
-    unsigned long* diagOffset = (unsigned long*) (&is_valid_array[3 * (minSize + 1) * sizeof(long)]);
-
+    uint32_t* diagOffset = (uint32_t*) (&is_valid_array[3 * (minSize + 1) * sizeof(uint32_t)]);
+    
 
 // shared memory space for storing longer of the two strings
     memset(is_valid, 0, minSize);
@@ -866,7 +866,7 @@ gpu_bsw::sequence_aa_kernel_traceback(char* seqA_array, char* seqB_array, unsign
   longCIGAR = longCIGAR_array + (block_Id * maxCIGAR);
   CIGAR = CIGAR_array + (block_Id * maxCIGAR);
 
-  unsigned long* diagOffset = (unsigned long*) (&is_valid_array[3 * (minSize + 1) * sizeof(long)]);
+  uint32_t* diagOffset = (uint32_t*) (&is_valid_array[3 * (minSize + 1) * sizeof(uint32_t)]);
 
  
 // shared memory space for storing longer of the two strings
