@@ -7,8 +7,6 @@
 #define NUM_OF_AA 21
 #define ENCOD_MAT_SIZE 91
 #define SCORE_MAT_SIZE 576
-#define DEBUG_PRINT 0
-#define TIMING_PRINT 0
 
 namespace gpu_bsw{
 __device__ short
@@ -50,7 +48,7 @@ __global__ void
 sequence_dna_kernel_traceback(char* seqA_array, char* seqB_array, unsigned* prefix_lengthA,
                     unsigned* prefix_lengthB, short* seqA_align_begin, short* seqA_align_end,
                     short* seqB_align_begin, short* seqB_align_end, short* top_scores, 
-                    char* longCIGAR_array, char* CIGAR_array, char* H_ptr_array,
+                    char* longCIGAR_array, char* CIGAR_array, char* H_ptr_array, 
                     int maxCIGAR, unsigned const maxMatrixSize,
                     short matchScore, short misMatchScore, short startGap, short extendGap);
 

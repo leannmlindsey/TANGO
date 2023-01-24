@@ -37,8 +37,5 @@ kernel_driver_dna(std::vector<std::string> reads, std::vector<std::string> conti
 void
 kernel_driver_aa(std::vector<std::string> reads, std::vector<std::string> contigs, alignment_results *alignments, int maxCIGAR, short scoring_matrix[], short openGap, short extendGap, float factor = 1.0);
 
-
 }
-
-
 #endif

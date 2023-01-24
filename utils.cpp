@@ -4,7 +4,9 @@ unsigned getMaxLength (std::vector<std::string> v)
   unsigned maxLength = 0;
   for(auto str : v){
     if(maxLength < str.length()){
+      //printf("maxLength was %d",maxLength);
       maxLength = str.length();
+      //printf(",maxLength changed to %d\n",maxLength);
     }
   }
   return maxLength;
@@ -17,6 +19,7 @@ void initialize_alignments(gpu_bsw_driver::alignment_results *alignments, int ma
     cudaMallocHost(&(alignments->query_end), sizeof(short)*max_alignments);
     cudaMallocHost(&(alignments->top_scores), sizeof(short)*max_alignments);
     cudaMallocHost(&(alignments->CIGAR), sizeof(char)*maxCIGAR*(max_alignments));
+    printf("index size at allocation: %x\n",sizeof(char)*maxCIGAR*(max_alignments));
 }
 
 void free_alignments(gpu_bsw_driver::alignment_results *alignments){

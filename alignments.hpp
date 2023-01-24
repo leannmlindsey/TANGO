@@ -10,7 +10,7 @@ class gpu_alignments{
     short* scores_gpu;
     unsigned* offset_ref_gpu;
     unsigned* offset_query_gpu;
-    char* H_ptr_gpu;
+    char* H_ptr_gpu, *E_ptr_gpu, *F_ptr_gpu;
     char* longCIGAR_gpu, *CIGAR_gpu;
 
     gpu_alignments(int max_alignments, int maxCIGAR, unsigned const maxMatrixSize);
