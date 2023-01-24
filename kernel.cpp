@@ -553,7 +553,7 @@ gpu_bsw::sequence_dna_kernel_traceback(char* seqA_array, char* seqB_array, unsig
     unsigned maxSize = lengthSeqA > lengthSeqB ? lengthSeqA : lengthSeqB;
     unsigned minSize = lengthSeqA < lengthSeqB ? lengthSeqA : lengthSeqB;
 
-    H_ptr = H_ptr_array + (block_Id * maxMatrixSize);
+    H_ptr = H_ptr_array + (block_Id * maxMatrixSize); //Pointer in global memory to the start of the HEF combined matrix
 
     longCIGAR = longCIGAR_array + (block_Id * maxCIGAR);
     CIGAR = CIGAR_array + (block_Id * maxCIGAR);
