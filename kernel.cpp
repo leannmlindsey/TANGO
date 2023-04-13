@@ -1218,10 +1218,10 @@ int block_Id  = blockIdx.x;
           top_scores[block_Id] = thread_max;
         }
         
-        gpu_bsw::traceBack(current_i, current_j, seqA_array, seqB_array, prefix_lengthA, 
-                    prefix_lengthB, seqA_align_begin, seqA_align_end,
-                    seqB_align_begin, seqB_align_end, maxMatrixSize, maxCIGAR,
-                    longCIGAR, CIGAR, H_ptr, diagOffset);
+        //gpu_bsw::traceBack(current_i, current_j, seqA_array, seqB_array, prefix_lengthA, 
+        //            prefix_lengthB, seqA_align_begin, seqA_align_end,
+        //            seqB_align_begin, seqB_align_end, maxMatrixSize, maxCIGAR,
+        //            longCIGAR, CIGAR, H_ptr, diagOffset);
 
     }
     __syncthreads();
@@ -1494,20 +1494,29 @@ gpu_bsw::sequence_aa_kernel_traceback(char* seqA_array, char* seqB_array, unsign
 
         _curr_H = findMaxFour(diag_score, _curr_F, _curr_E, 0, &ind);
 
-        if (ind == 0) {
-                H_temp = H_temp | 4;
-                H_temp = H_temp | 8;
-        } else if (ind == 1) {
-                H_temp = H_temp & (~4);
-                H_temp = H_temp | 8;           
-        } else if (ind == 2) {
-                H_temp = H_temp & (~8);
-                H_temp = H_temp | 4;
-        } else {
-                H_temp = H_temp & (~8);
-                H_temp = H_temp & (~4);
-        }
-        H_ptr[diagOffset[diagId] + locOffset] =  H_temp;
+        switch (ind) {
+              case 0: // diagonal cell is max, set bits to 0b00001100
+                H_temp |= 4; // set bit 0b00000100
+                H_temp |= 8; // set bit 0b00001000
+                //printf("\\");
+                break;
+              case 1: // left cell is max, set bits to 0b00001000
+                H_temp &= (~4); // clear bit
+                H_temp |= 8; // set bit 0b00001000
+                //printf("-");
+                break;
+              case 2: // top cell is max, set bits to 0b00000100
+                H_temp &= (~8); //clear bit
+                H_temp |= 4; // set bit 0b00000100
+                //printf("|");
+                break;
+              default: // score is 0, set bits to 0b00000000
+                H_temp &= (~8); //clear bit
+                H_temp &= (~4); //clear bit
+                //printf("*");
+                break;
+            }
+	// H_ptr[diagOffset[diagId] + locOffset] =  H_temp;
 
         thread_max_i = (thread_max >= _curr_H) ? thread_max_i : i;
         thread_max_j = (thread_max >= _curr_H) ? thread_max_j : thread_Id;
