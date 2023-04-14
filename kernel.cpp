@@ -1080,7 +1080,7 @@ gpu_bsw::sequence_aa_kernel_traceback(char* seqA_array, char* seqB_array, unsign
                 //printf("*");
                 break;
             }
-	// H_ptr[diagOffset[diagId] + locOffset] =  H_temp;
+	H_ptr[diagOffset[diagId] + locOffset] =  H_temp;
 
         thread_max_i = (thread_max >= _curr_H) ? thread_max_i : i;
         thread_max_j = (thread_max >= _curr_H) ? thread_max_j : thread_Id;
