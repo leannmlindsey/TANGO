@@ -752,10 +752,15 @@ gpu_bsw::sequence_dna_kernel_traceback(char* seqA_array, char* seqB_array, unsig
           
           H_ptr[diagOffset[diagId] + locOffset] =  H_temp;
       
-          thread_max_i = (thread_max >= _curr_H) ? thread_max_i : i;
-          thread_max_j = (thread_max >= _curr_H) ? thread_max_j : thread_Id;
-          thread_max   = (thread_max >= _curr_H) ? thread_max : _curr_H;
+          //thread_max_i = (thread_max >= _curr_H) ? thread_max_i : i;
+          //thread_max_j = (thread_max >= _curr_H) ? thread_max_j : thread_Id;
+          //thread_max   = (thread_max >= _curr_H) ? thread_max : _curr_H;
         
+	  if (_curr_H > thread_max) {
+	  	thread_max_i = i;
+		thread_max_j = thread_Id;
+		thread_max = _curr_H;
+	  }
           i++;
        }
       __syncthreads(); 
