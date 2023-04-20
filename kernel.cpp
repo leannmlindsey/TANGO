@@ -680,9 +680,9 @@ gpu_bsw::sequence_dna_kernel_traceback(char* seqA_array, char* seqB_array, unsig
     __syncthreads(); // to make sure all shmem allocations have been initialized
 
     
-    for(int diag = 0; diag < lengthSeqA + lengthSeqB-1; diag++)
+    for(int diag = 0; diag < (lengthSeqA + lengthSeqB-1)/2-2; diag++)
     {  // iterate for the number of anti-diagonals
-
+        //test
         unsigned short diagId = i/2 + j; 
         //unsigned short diagId    = i + j;
         unsigned short locOffset = 0;
@@ -809,18 +809,18 @@ gpu_bsw::sequence_dna_kernel_traceback(char* seqA_array, char* seqB_array, unsig
                  //printf("*");
           }
           
-          if (i%2==0){
+         // if (i%2==0){
             //char H_temp_old = H_temp;
-            H_temp = H_temp << 4;
+            //H_temp = H_temp << 4;
   
             //printf("tid = %d, i = %d, Moving Lower bytes to upper bytes in H_PTR = H_temp_old = %02x, H_temp_new = %02x\n", thread_Id, i, H_temp_old, H_temp);
-          } else {
+          //} else {
             H_ptr[diagOffset[diagId] + locOffset] =  H_temp;
             //printf("INDEX=%d, tid=%d, i=%d, diagId=%d, diagOffset[diagId]=%d, offset=%d =========>H_ptr=%02x\n",diagOffset[diagId] + locOffset, thread_Id, i, diagId, diagOffset[diagId], locOffset, H_temp);
 
             //if (thread_Id == 38) printf("tid = %d, i = %d, WRITING INTO H_PTR table = H_temp = %02x, with diagId = %d, locOffset = %d, index = %d, H_ptr[index] = %02x\n", thread_Id, i, H_temp, diagId, locOffset,diagOffset[diagId] + locOffset, H_ptr[diagOffset[diagId] + locOffset] );
             //if (thread_Id == 38) printf("H_temp = %02x, H_ptr[5614]=%02x, H_ptr[] = %02x\n",H_temp, H_ptr[5614],H_ptr[diagOffset[diagId] + locOffset]);
-       	  };
+       	 // };
         
 	        if (_curr_H > thread_max) {
 	  	      thread_max_i = i;
@@ -828,10 +828,10 @@ gpu_bsw::sequence_dna_kernel_traceback(char* seqA_array, char* seqB_array, unsig
 		        thread_max = _curr_H;
 	        }
 
-          i++;
+          i=i+2;
        }
        //needed in case the last i was even and that row didn't get saved yet.
-       H_ptr[diagOffset[diagId] + locOffset] =  H_temp;
+       //H_ptr[diagOffset[diagId] + locOffset] =  H_temp;  THIS NEEDED TO COME OUT
       __syncthreads(); 
     }
     __syncthreads();
@@ -851,18 +851,21 @@ gpu_bsw::sequence_dna_kernel_traceback(char* seqA_array, char* seqB_array, unsig
           seqB_align_end[block_Id] = thread_max_i;
           seqA_align_end[block_Id] = thread_max_j;
           top_scores[block_Id] = thread_max;
+          
+         
         }
         else
         {
           seqA_align_end[block_Id] = thread_max_i;
           seqB_align_end[block_Id] = thread_max_j;
           top_scores[block_Id] = thread_max;
+          
         }
         
-        gpu_bsw::traceBack(current_i, current_j, seqA_array, seqB_array, prefix_lengthA, 
-                    prefix_lengthB, seqA_align_begin, seqA_align_end,
-                    seqB_align_begin, seqB_align_end, maxMatrixSize, maxCIGAR,
-                    longCIGAR, CIGAR, H_ptr, diagOffset);
+        //gpu_bsw::traceBack(current_i, current_j, seqA_array, seqB_array, prefix_lengthA, 
+        //            prefix_lengthB, seqA_align_begin, seqA_align_end,
+        //            seqB_align_begin, seqB_align_end, maxMatrixSize, maxCIGAR,
+        //            longCIGAR, CIGAR, H_ptr, diagOffset);
 
     }
     __syncthreads();
