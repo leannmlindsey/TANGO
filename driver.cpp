@@ -62,7 +62,7 @@ gpu_bsw_driver::kernel_driver_dna(std::vector<std::string> reads, std::vector<st
         size_t gpu_mem_avail = get_tot_gpu_mem(myGPUid);
         unsigned max_alns_gpu = ceil(((double)gpu_mem_avail*factor)/tot_mem_req_per_aln);
 
-        unsigned max_alns_sugg = 8192;  //this is a function of the size of the sequences and making sure you can saturate the GPU for computation
+        unsigned max_alns_sugg = 10000;  //this is a function of the size of the sequences and making sure you can saturate the GPU for computation
         max_alns_gpu = max_alns_gpu > max_alns_sugg ? max_alns_sugg : max_alns_gpu; 
         int       its    = (max_per_device>max_alns_gpu)?(ceil((double)max_per_device/max_alns_gpu)):1;
         
@@ -223,7 +223,7 @@ gpu_bsw_driver::kernel_driver_dna(std::vector<std::string> reads, std::vector<st
                 gpu_data.ref_start_gpu + sequences_per_stream, gpu_data.ref_end_gpu + sequences_per_stream, gpu_data.query_start_gpu + sequences_per_stream, gpu_data.query_end_gpu + sequences_per_stream,
                 gpu_data.scores_gpu + sequences_per_stream, gpu_data.longCIGAR_gpu + sequences_per_stream * maxCIGAR, gpu_data.CIGAR_gpu + sequences_per_stream * maxCIGAR , 
                 gpu_data.H_ptr_gpu + sequences_per_stream * maxMatrixSize,
-                maxCIGAR, maxMatrixSize, matchScore, misMatchScore, startGap, extendGap);
+              maxCIGAR, maxMatrixSize, matchScore, misMatchScore, startGap, extendGap);
             cudaErrchk(cudaGetLastError());
 
             cudaStreamSynchronize (streams_cuda[0]);

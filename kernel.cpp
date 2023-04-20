@@ -334,6 +334,7 @@ gpu_bsw::traceBack(short current_i, short current_j, char* seqA_array, char* seq
     unsigned short current_diagId;     // = current_i+current_j;
     unsigned short current_locOffset;  // = 0;
     unsigned maxSize = lengthSeqA > lengthSeqB ? lengthSeqA : lengthSeqB;
+    unsigned minSize = lengthSeqA < lengthSeqB ? lengthSeqA : lengthSeqB;
    
     const char* longerSeq = lengthSeqA < lengthSeqB ? seqB : seqA; 
     const char* shorterSeq = lengthSeqA < lengthSeqB ? seqA : seqB; 
@@ -341,20 +342,32 @@ gpu_bsw::traceBack(short current_i, short current_j, char* seqA_array, char* seq
     unsigned lengthLongerSeq = lengthSeqA < lengthSeqB ? lengthSeqB : lengthSeqA;    
     bool seqBShorter = lengthSeqA < lengthSeqB ? false : true;  //need to keep track of whether query or ref is shorter for I or D in CIGAR 
 
-    current_diagId    = current_i + current_j;
+    int binary_matrix_height = maxSize/2 +1; //binary matrix is half the height of maxSize
+    int binary_matrix_min, binary_matrix_max;
+    if (binary_matrix_height > minSize) { 
+	    binary_matrix_min = minSize;
+	    binary_matrix_max = binary_matrix_height;
+    } else { //sometimes binary matrix ends up shorter than minSize, this fixes the diagOffset in that case
+	    binary_matrix_min = binary_matrix_height;
+	    binary_matrix_max = minSize;
+    };
+    current_diagId    = current_i/2 + current_j;
     current_locOffset = 0;
-    if(current_diagId < maxSize)
-    {
-        current_locOffset = current_j;
-    }
-    else
-    {
-        unsigned short myOff = current_diagId - maxSize+1;
-        current_locOffset    = current_j - myOff;
-    }
+    if(current_diagId < binary_matrix_max) 
+        {
+            current_locOffset = current_j;
+        }
+        else
+        {
+          //unsigned short myOff = diagId - maxSize + 1;
+          unsigned short myOff = current_diagId - binary_matrix_max+1;
+          current_locOffset            = current_j - myOff;
+        }
 
     char temp_H;
+
     temp_H = H_ptr[diagOffset[current_diagId] + current_locOffset];
+   
     short next_i;
     short next_j;
     
@@ -367,14 +380,29 @@ gpu_bsw::traceBack(short current_i, short current_j, char* seqA_array, char* seq
     short prev_i;
     short prev_j;
     bool continueTrace = true;
+
+    //printf("first_j = %d, first_i = %d\n", first_j, first_i);
+
    
     while(continueTrace && (current_i != 0) && (current_j !=0))
     {   
+      //printf("BEFORE SHIFT: current_i = %d, current_j = %d, current_diagId = %d, temp_H = %02x\n", current_i, current_j, current_diagId, temp_H);
        temp_H = H_ptr[diagOffset[current_diagId] + current_locOffset];
+       if (current_i%2==0){
+          //printf("i=%d and is EVEN: H_ptr = %02x\n", current_i, H_ptr[diagOffset[current_diagId] + current_locOffset]);
+        
+          temp_H = H_ptr[diagOffset[current_diagId] + current_locOffset] >> 4 ;
+       } else {
+          //printf("i=%d and is ODD: H_ptr = %02x\n", current_i, H_ptr[diagOffset[current_diagId] + current_locOffset]);
+
+          temp_H = H_ptr[diagOffset[current_diagId] + current_locOffset] & 0x0f;
+       }
+
+       //printf("AFTER SHIFT: current_i = %d, current_j = %d, current_diagId = %d, index = %d, temp_H = %02x\n", current_i, current_j, current_diagId, diagOffset[current_diagId] + current_locOffset, temp_H);
 
         //write the current value into longCIGAR then assign next_i
         if (matrix == 'H') { 
-            
+            //printf("H\n");
             switch (temp_H & 0b00001100){    
                 case 0b00001100 :
                     matrix = 'H';
@@ -398,9 +426,10 @@ gpu_bsw::traceBack(short current_i, short current_j, char* seqA_array, char* seq
                     break;
             }
         } else if (matrix == 'E'){
+            //printf("E\n");
             switch (temp_H & 0b00000010){
                 case 0b00000010 :
-		    longCIGAR[counter] = seqBShorter ? 'I' : 'D';
+		                longCIGAR[counter] = seqBShorter ? 'I' : 'D';
                     counter++;
                     next_i = current_i;
                     next_j = current_j - 1;
@@ -414,9 +443,10 @@ gpu_bsw::traceBack(short current_i, short current_j, char* seqA_array, char* seq
                     break;
             }
         } else if (matrix == 'F'){
+            //printf("F\n");
             switch (temp_H & 0b00000001){
                 case 0b00000001 :
-		    longCIGAR[counter] = seqBShorter ? 'D' : 'I';
+		                longCIGAR[counter] = seqBShorter ? 'D' : 'I';
                     counter++;
                     next_i = current_i - 1;
                     next_j = current_j;
@@ -430,6 +460,11 @@ gpu_bsw::traceBack(short current_i, short current_j, char* seqA_array, char* seq
                     break;
             }
         }
+            //for (int i = 0; i <= counter; i++){
+                 //printf("%c",longCIGAR[i]);
+             //}
+             //printf("\n");
+       
 
         if (continueTrace != false){
           prev_i = current_i; //record current values in case this is the stop location
@@ -438,15 +473,20 @@ gpu_bsw::traceBack(short current_i, short current_j, char* seqA_array, char* seq
           current_i = next_i;
           current_j = next_j;
 
-          current_diagId    = current_i + current_j;
+          //current_diagId    = current_i + current_j;
+          current_diagId    = current_i/2 + current_j;
+          //printf("current_i = %d, current_j = %d, current_diagId = %d\n", current_i, current_j, current_diagId);
           current_locOffset = 0;
 
-          if(current_diagId < maxSize)
+         if(current_diagId < binary_matrix_max) 
           {
             current_locOffset = current_j;
-          } else {
-            unsigned short myOff2 = current_diagId - maxSize+1;
-            current_locOffset     = current_j - myOff2;
+          }
+          else
+          {
+            //unsigned short myOff = diagId - maxSize + 1;
+            unsigned short myOff = current_diagId - binary_matrix_max+1;
+            current_locOffset            = current_j - myOff;
           }
         }
   }
@@ -522,7 +562,6 @@ gpu_bsw::sequence_dna_kernel_traceback(char* seqA_array, char* seqB_array, unsig
         seqB       = seqB_array + prefix_lengthB[block_Id - 1];
     }
     
-
     // what is the max length and what is the min length
     unsigned maxSize = lengthSeqA > lengthSeqB ? lengthSeqA : lengthSeqB;
     unsigned minSize = lengthSeqA < lengthSeqB ? lengthSeqA : lengthSeqB;
@@ -574,35 +613,54 @@ gpu_bsw::sequence_dna_kernel_traceback(char* seqA_array, char* seqB_array, unsig
     int    locSum = 0;
     
     //create prefixSum table by cycling through the threads in batches
+    int binary_matrix_height = maxSize/2 +1; //binary matrix is half the height of maxSize
+    int binary_matrix_min, binary_matrix_max;
+    if (binary_matrix_height > minSize) { 
+	    binary_matrix_min = minSize;
+	    binary_matrix_max = binary_matrix_height;
+    } else { //sometimes binary matrix ends up shorter than minSize, this fixes the diagOffset in that case
+	    binary_matrix_min = binary_matrix_height;
+	    binary_matrix_max = minSize;
+    };
 
-    for (int cyc = 0; cyc <= (lengthSeqA + lengthSeqB+1)/minSize + 1; cyc++){
-      
-      int locDiagId = thread_Id+cyc*minSize;
-      if (locDiagId < lengthSeqA + lengthSeqB ){
-        if(locDiagId <= minSize){
-          locSum = (locDiagId) * (locDiagId + 1)/2;
-          diagOffset[locDiagId]= locSum;
-          //printf("LEFT CORNER inside loop thread_Id = %d cyc = %d locSum = %d locDiagId = %d\n", thread_Id, cyc, locSum, locDiagId);
-        }
-        else if (locDiagId > maxSize + 1){
-          int n = (maxSize+minSize) - locDiagId-1;
-          int finalcell = (maxSize) * (minSize)+1;
-          locSum = finalcell - n*(n+1)/2;
-          diagOffset[locDiagId] = locSum;
-          //printf("RIGHT CORNER inside loop thread_Id = %d cyc = %d locSum = %d locDiagId = %d\n", thread_Id, cyc, locSum, locDiagId);
-        }
-        else {
-          locSum = ((minSize)*(minSize+1)/2) +(minSize)*(locDiagId-minSize);
-          diagOffset[locDiagId] = locSum;
-          //printf("MIDDLE SECTION inside loop thread_Id = %d cyc = %d locSum = %d locDiagId = %d\n", thread_Id, cyc, locSum, locDiagId);
+    //if (thread_Id ==0) {
+//	    printf("# cycles = %d, minSize = %d, binary_matrix_min + binary_matrix_max = %d\n", (binary_matrix_min + binary_matrix_max+1)/minSize + 1, minSize, binary_matrix_min + binary_matrix_max);
+  //  };
+    for (int cyc = 0; cyc <= (binary_matrix_min + binary_matrix_max+1)/minSize + 1; cyc++){
+    	int locDiagId = thread_Id+cyc*minSize;
+        if (locDiagId < binary_matrix_min + binary_matrix_max ){
+          if(locDiagId < binary_matrix_min){
+            locSum = (locDiagId) * (locDiagId + 1)/2; //fill in upper left triangle in matrix
+            diagOffset[locDiagId]= locSum;
+//	    printf("LEFT CORNER runs from 0 to %d\n", binary_matrix_min-1);
+            //printf("LEFT CORNER inside loop thread_Id = %d cyc = %d locSum = %d locDiagId = %d\n", thread_Id, cyc, locSum, locDiagId);
+          }
+          else if (locDiagId > binary_matrix_max){
+            int n = (binary_matrix_max+binary_matrix_min) - locDiagId-1;
+            int finalcell = (binary_matrix_max) * (binary_matrix_min); 
+            locSum = finalcell - n*(n+1)/2; //fill in lower right triangle of the matrix
+            diagOffset[locDiagId] = locSum;
+//	    printf("RIGHT CORNER runs from binary_matrix_max = %d to finalcell = %d\n",binary_matrix_max,  finalcell);
+            //printf("RIGHT CORNER inside loop thread_Id = %d cyc = %d locSum = %d locDiagId = %d\n", thread_Id, cyc, locSum, locDiagId);
+          }
+          else {
+            locSum = ((binary_matrix_min)*(binary_matrix_min+1)/2) +(binary_matrix_min)*(locDiagId-binary_matrix_min);
+            diagOffset[locDiagId] = locSum; //fill in constant diagonals of the matrix
+            //printf("MIDDLE SECTION inside loop thread_Id = %d cyc = %d locSum = %d locDiagId = %d\n", thread_Id, cyc, locSum, locDiagId);
+          }
         }
       }
-    }
+  //       if(thread_Id == 0){
+    //      printf("TABLE 1 : cycles = %d, binary_matrix_height = %d, minSize = %d, maxSize = %d, finalcell = %d\n",(minSize + binary_matrix_height+1)/minSize + 1, binary_matrix_height, minSize, maxSize, (binary_matrix_height) * (minSize)+1 );
+      //    for(int b = 0; b< minSize + binary_matrix_height-1; b++) printf("%d ", diagOffset[b]);
+        // }
+
+    //if(thread_Id == 0){
+      //printf("TABLE 2 : cycles = %d, binary_matrix_height = %d, minSize = %d, maxSize = %d, finalcell = %d\n",(minSize + binary_matrix_height+1)/minSize + 1, binary_matrix_height, minSize, maxSize, (binary_matrix_height) * (minSize)+1 );
+      //for(int b = 0; b< minSize + binary_matrix_height-1; b++) printf("%d ", diagOffset[b]);
+    //}
     
      __syncthreads(); //to make sure prefixSum is calculated before the threads start calculations.    
-   
-
-
 
   //initializing registers for storing diagonal values for three recent most diagonals (separate tables for H, E, F
     short _curr_H = 0, _curr_F = -100, _curr_E = -100; //-100 acts as neg infinity
@@ -625,26 +683,27 @@ gpu_bsw::sequence_dna_kernel_traceback(char* seqA_array, char* seqB_array, unsig
     for(int diag = 0; diag < lengthSeqA + lengthSeqB-1; diag++)
     {  // iterate for the number of anti-diagonals
 
-        
-        unsigned short diagId    = i + j;
+        unsigned short diagId = i/2 + j; 
+        //unsigned short diagId    = i + j;
         unsigned short locOffset = 0;
-        if(diagId < maxSize) 
+        if(diagId < binary_matrix_max) 
         {
             locOffset = j;
         }
         else
         {
-          unsigned short myOff = diagId - maxSize+1;
+          //unsigned short myOff = diagId - maxSize + 1;
+          unsigned short myOff = diagId - binary_matrix_max+1;
           locOffset            = j - myOff;
         }
 
 
         is_valid = is_valid - (diag < minSize || diag >= maxSize); //move the pointer to left by 1 if cnd true
 
-	       _temp_Val = _prev_H; // value exchange happens here to setup registers for next iteration
-	       _prev_H = _curr_H;
-	       _curr_H = _prev_prev_H;
-	       _prev_prev_H = _temp_Val;
+	      _temp_Val = _prev_H; // value exchange happens here to setup registers for next iteration
+	      _prev_H = _curr_H;
+	      _curr_H = _prev_prev_H;
+	      _prev_prev_H = _temp_Val;
          _curr_H = 0;
 
         _temp_Val = _prev_E;
@@ -750,29 +809,42 @@ gpu_bsw::sequence_dna_kernel_traceback(char* seqA_array, char* seqB_array, unsig
                  //printf("*");
           }
           
-          H_ptr[diagOffset[diagId] + locOffset] =  H_temp;
-      
-          //thread_max_i = (thread_max >= _curr_H) ? thread_max_i : i;
-          //thread_max_j = (thread_max >= _curr_H) ? thread_max_j : thread_Id;
-          //thread_max   = (thread_max >= _curr_H) ? thread_max : _curr_H;
+          if (i%2==0){
+            //char H_temp_old = H_temp;
+            H_temp = H_temp << 4;
+  
+            //printf("tid = %d, i = %d, Moving Lower bytes to upper bytes in H_PTR = H_temp_old = %02x, H_temp_new = %02x\n", thread_Id, i, H_temp_old, H_temp);
+          } else {
+            H_ptr[diagOffset[diagId] + locOffset] =  H_temp;
+            //printf("INDEX=%d, tid=%d, i=%d, diagId=%d, diagOffset[diagId]=%d, offset=%d =========>H_ptr=%02x\n",diagOffset[diagId] + locOffset, thread_Id, i, diagId, diagOffset[diagId], locOffset, H_temp);
+
+            //if (thread_Id == 38) printf("tid = %d, i = %d, WRITING INTO H_PTR table = H_temp = %02x, with diagId = %d, locOffset = %d, index = %d, H_ptr[index] = %02x\n", thread_Id, i, H_temp, diagId, locOffset,diagOffset[diagId] + locOffset, H_ptr[diagOffset[diagId] + locOffset] );
+            //if (thread_Id == 38) printf("H_temp = %02x, H_ptr[5614]=%02x, H_ptr[] = %02x\n",H_temp, H_ptr[5614],H_ptr[diagOffset[diagId] + locOffset]);
+       	  };
         
-	  if (_curr_H > thread_max) {
-	  	thread_max_i = i;
-		thread_max_j = thread_Id;
-		thread_max = _curr_H;
-	  }
+	        if (_curr_H > thread_max) {
+	  	      thread_max_i = i;
+		        thread_max_j = thread_Id;
+		        thread_max = _curr_H;
+	        }
+
           i++;
        }
+       //needed in case the last i was even and that row didn't get saved yet.
+       H_ptr[diagOffset[diagId] + locOffset] =  H_temp;
       __syncthreads(); 
     }
     __syncthreads();
+
 
     thread_max = blockShuffleReduce_with_index(thread_max, thread_max_i, thread_max_j, minSize);  // thread 0 will have the correct values
     
     if(thread_Id == 0)
     {
+        
         short current_i = thread_max_i;
         short current_j = thread_max_j;
+        //printf("thread_max = %d, current_i = %d, current_j = %d\n", thread_max, current_i, current_j);
       
         if(lengthSeqA < lengthSeqB)
         {
