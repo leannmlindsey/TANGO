@@ -174,6 +174,10 @@ void dnaSampleRun(string refFile, string queFile, string out_file){
             continue;
           }else{
             string seq = myInLine;
+            if(seq.size() % 2 != 0) { // check if the sequence length is odd
+              seq += " "; // add a space to make it even
+              totSizeA++; // increment the total size by 1 to account for the added space
+            }
             G_sequencesA.push_back(seq);
             //std::cout<<"ref:"<<G_sequencesA.size()<<std::endl;
             totSizeA += seq.size();
@@ -197,6 +201,10 @@ void dnaSampleRun(string refFile, string queFile, string out_file){
             continue;
           }else{
             string seq = myInLine;
+            if(seq.size() % 2 != 0) { // check if the sequence length is odd
+              seq += " "; // add a space to make it even
+              totSizeB++; // increment the total size by 1 to account for the added space
+            }
             G_sequencesB.push_back(seq);
           //  std::cout<<"que:"<<G_sequencesB.size()<<std::endl;
             totSizeB += seq.size();

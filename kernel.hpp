@@ -7,7 +7,10 @@
 #define NUM_OF_AA 21
 #define ENCOD_MAT_SIZE 91
 #define SCORE_MAT_SIZE 576
+#define THREAD_TO_PRINT 0
+#define BLOCK_TO_PRINT 918
 
+//test
 namespace gpu_bsw{
 __device__ short
 warpReduceMax_with_index(short val, short& myIndex, short& myIndex2, unsigned lengthSeqB);

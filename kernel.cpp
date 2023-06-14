@@ -248,16 +248,23 @@ gpu_bsw::createCIGAR(char* longCIGAR, char* CIGAR, int maxCIGAR,
     short beg_S;
     short end_S; 
 
+   
+
     if (seqBShorter){
         
         beg_S = lengthShorterSeq - first_j-1;
         end_S = last_j; 
+        if(seqB[lengthShorterSeq-1] == ' ') beg_S = beg_S - 1; //to fix if the original sequence was odd and a placeholder ' ' was put in 
     } else {
         beg_S = lengthLongerSeq - first_i-1; 
         end_S = last_i;
+        if(seqA[lengthLongerSeq-1] == ' ') beg_S = beg_S -1;
     }
     
+   
+     //printf("beg_S = %d, end_S = %d\n", beg_S, end_S);
     if ( beg_S != 0){
+        //printf("inside the beg_S loop\n");
         CIGAR[0]='S';
         cigar_position++ ; 
         cigar_position = intToCharPlusWrite(beg_S, CIGAR, cigar_position);
@@ -280,8 +287,9 @@ gpu_bsw::createCIGAR(char* longCIGAR, char* CIGAR, int maxCIGAR,
         p++;
 
     }
-    
+    //printf("end_S before loop is %d\n", end_S);
     if ( end_S != 0){
+      //printf("inside the beg_S loop\n");
         CIGAR[cigar_position]='S';
         cigar_position++ ; 
         cigar_position = intToCharPlusWrite(end_S, CIGAR, cigar_position);
@@ -342,7 +350,7 @@ gpu_bsw::traceBack(short current_i, short current_j, char* seqA_array, char* seq
     unsigned lengthLongerSeq = lengthSeqA < lengthSeqB ? lengthSeqB : lengthSeqA;    
     bool seqBShorter = lengthSeqA < lengthSeqB ? false : true;  //need to keep track of whether query or ref is shorter for I or D in CIGAR 
 
-    int binary_matrix_height = maxSize/2 +1; //binary matrix is half the height of maxSize
+    int binary_matrix_height = (maxSize%2==0) ? (maxSize/2) : (maxSize/2 + 1);//binary matrix is half the height of maxSize
     int binary_matrix_min, binary_matrix_max;
     if (binary_matrix_height > minSize) { 
 	    binary_matrix_min = minSize;
@@ -353,19 +361,10 @@ gpu_bsw::traceBack(short current_i, short current_j, char* seqA_array, char* seq
     };
     current_diagId    = current_i/2 + current_j;
     current_locOffset = 0;
-    if(current_diagId < binary_matrix_max) 
-        {
-            current_locOffset = current_j;
-        }
-        else
-        {
-          //unsigned short myOff = diagId - maxSize + 1;
-          unsigned short myOff = current_diagId - binary_matrix_max+1;
-          current_locOffset            = current_j - myOff;
-        }
+    current_locOffset = (current_diagId < binary_matrix_max) ? current_j : current_j - (current_diagId - binary_matrix_max+1);
 
     char temp_H;
-
+    //if (myId == BLOCK_TO_PRINT) printf("VALUES received by traceback: current_i = %d, current_j = %d, current_diagId = %d, binary_matrix_max = %d\n", current_i, current_j, current_diagId, binary_matrix_max);
     temp_H = H_ptr[diagOffset[current_diagId] + current_locOffset];
    
     short next_i;
@@ -398,7 +397,7 @@ gpu_bsw::traceBack(short current_i, short current_j, char* seqA_array, char* seq
           temp_H = H_ptr[diagOffset[current_diagId] + current_locOffset] & 0x0f;
        }
 
-       //printf("AFTER SHIFT: current_i = %d, current_j = %d, current_diagId = %d, index = %d, temp_H = %02x\n", current_i, current_j, current_diagId, diagOffset[current_diagId] + current_locOffset, temp_H);
+       //if(myId == BLOCK_TO_PRINT) printf("AFTER SHIFT: current_i = %d, current_j = %d, current_diagId = %d, index = %d, temp_H = %02x, diag_Id = %d, prefix = %d, locOffset = %d\n", current_i, current_j, current_diagId, diagOffset[current_diagId] + current_locOffset, temp_H, current_diagId, diagOffset[current_diagId], current_locOffset);
 
         //write the current value into longCIGAR then assign next_i
         if (matrix == 'H') { 
@@ -460,10 +459,12 @@ gpu_bsw::traceBack(short current_i, short current_j, char* seqA_array, char* seq
                     break;
             }
         }
-            //for (int i = 0; i <= counter; i++){
-                 //printf("%c",longCIGAR[i]);
-             //}
-             //printf("\n");
+        // if(myId == BLOCK_TO_PRINT){
+        //     for (int i = 0; i <= counter; i++){
+        //          printf("%c",longCIGAR[i]);
+        //      }
+        //     printf("\n");
+        // }
        
 
         if (continueTrace != false){
@@ -477,17 +478,10 @@ gpu_bsw::traceBack(short current_i, short current_j, char* seqA_array, char* seq
           current_diagId    = current_i/2 + current_j;
           //printf("current_i = %d, current_j = %d, current_diagId = %d\n", current_i, current_j, current_diagId);
           current_locOffset = 0;
-
-         if(current_diagId < binary_matrix_max) 
-          {
-            current_locOffset = current_j;
-          }
-          else
-          {
-            //unsigned short myOff = diagId - maxSize + 1;
-            unsigned short myOff = current_diagId - binary_matrix_max+1;
-            current_locOffset            = current_j - myOff;
-          }
+         
+          current_locOffset = (current_diagId < binary_matrix_max) ? current_j : current_j - (current_diagId - binary_matrix_max+1);
+        
+          
         }
   }
    //handle edge cases
@@ -526,13 +520,16 @@ gpu_bsw::sequence_dna_kernel_traceback(char* seqA_array, char* seqB_array, unsig
                     short* seqB_align_begin, short* seqB_align_end, short* top_scores, 
                     char* longCIGAR_array, char* CIGAR_array, char* H_ptr_array, 
                     int maxCIGAR, unsigned const maxMatrixSize, short matchScore, short misMatchScore, short startGap, short extendGap)
-{
-    
+{  //test
+  
     int block_Id  = blockIdx.x;
     int thread_Id = threadIdx.x;
     short laneId = threadIdx.x%32;
     short warpId = threadIdx.x/32;
 
+    //if(block_Id == BLOCK_TO_PRINT && thread_Id == 0)printf("BLOCK = %d\n", block_Id);
+
+    //if(thread_Id == 0) printf("THREAD PRINTING = %d\n",THREAD_TO_PRINT);
     unsigned lengthSeqA;
     unsigned lengthSeqB;
     // local pointers
@@ -573,16 +570,7 @@ gpu_bsw::sequence_dna_kernel_traceback(char* seqA_array, char* seqB_array, unsig
 
      
     char* longer_seq;
-    uint32_t* diagOffset = (uint32_t*) (&is_valid_array[3 * (minSize + 1) * sizeof(uint32_t)]);
     
-
-// shared memory space for storing longer of the two strings
-    memset(is_valid, 0, minSize);
-    is_valid += minSize;
-    memset(is_valid, 1, minSize);
-    is_valid += minSize;
-    memset(is_valid, 0, minSize);
-
     char myColumnChar;
     // the shorter of the two strings is stored in thread registers
     char H_temp = 0;  //temp value of H stored in register until H, E and F are set then written to global; set all bits to 0 initially
@@ -600,6 +588,27 @@ gpu_bsw::sequence_dna_kernel_traceback(char* seqA_array, char* seqB_array, unsig
       longer_seq = seqA;
     }
 
+    int binary_matrix_height = (maxSize%2==0) ? (maxSize/2) : (maxSize/2 + 1);//binary matrix is half the height of maxSize
+    int binary_matrix_min, binary_matrix_max;
+    if (binary_matrix_height > minSize) { 
+	    binary_matrix_min = minSize;
+	    binary_matrix_max = binary_matrix_height;
+    } else { //sometimes binary matrix ends up shorter than minSize, this fixes the diagOffset in that case
+	    binary_matrix_min = binary_matrix_height;
+	    binary_matrix_max = minSize;
+    };
+    uint32_t* diagOffset = (uint32_t*) (&is_valid_array[3 * maxSize * sizeof(uint32_t)]);
+    //if(thread_Id == THREAD_TO_PRINT)printf("minSize = %d, maxSize = %d, binary_matrix_height = %d, binary_matrix_min = %d, binary_matrix_max = %d\n", minSize, maxSize, binary_matrix_height, binary_matrix_min, binary_matrix_max);
+// shared memory space for storing longer of the two strings
+    //if(thread_Id==0)printf("is_valid = %p, 0's start at this location, minSize = %d\n",is_valid, minSize);
+    memset(is_valid, 0, minSize);
+    is_valid += minSize;
+    //if(thread_Id==0)printf("is_valid = %p, 1's start at this location, binary_matrix_height = %d\n",is_valid, binary_matrix_height);
+    memset(is_valid, 1, binary_matrix_height);
+    is_valid += binary_matrix_height;
+     //if(thread_Id==0)printf("is_valid = %p, 0's start at this location, 1s end\n",is_valid);
+    memset(is_valid, 0, minSize);
+
     __syncthreads(); // this is required here so that complete sequence has been copied to shared memory
 
     int   i            = 0;
@@ -612,185 +621,209 @@ gpu_bsw::sequence_dna_kernel_traceback(char* seqA_array, char* seqB_array, unsig
     //set up the prefixSum for diagonal offset look up table for H_ptr
     int    locSum = 0;
     
-    //create prefixSum table by cycling through the threads in batches
-    int binary_matrix_height = maxSize/2 +1; //binary matrix is half the height of maxSize
-    int binary_matrix_min, binary_matrix_max;
-    if (binary_matrix_height > minSize) { 
-	    binary_matrix_min = minSize;
-	    binary_matrix_max = binary_matrix_height;
-    } else { //sometimes binary matrix ends up shorter than minSize, this fixes the diagOffset in that case
-	    binary_matrix_min = binary_matrix_height;
-	    binary_matrix_max = minSize;
-    };
+
 
     //if (thread_Id ==0) {
-//	    printf("# cycles = %d, minSize = %d, binary_matrix_min + binary_matrix_max = %d\n", (binary_matrix_min + binary_matrix_max+1)/minSize + 1, minSize, binary_matrix_min + binary_matrix_max);
-  //  };
-    for (int cyc = 0; cyc <= (binary_matrix_min + binary_matrix_max+1)/minSize + 1; cyc++){
-    	int locDiagId = thread_Id+cyc*minSize;
-        if (locDiagId < binary_matrix_min + binary_matrix_max ){
-          if(locDiagId < binary_matrix_min){
-            locSum = (locDiagId) * (locDiagId + 1)/2; //fill in upper left triangle in matrix
-            diagOffset[locDiagId]= locSum;
-//	    printf("LEFT CORNER runs from 0 to %d\n", binary_matrix_min-1);
-            //printf("LEFT CORNER inside loop thread_Id = %d cyc = %d locSum = %d locDiagId = %d\n", thread_Id, cyc, locSum, locDiagId);
-          }
-          else if (locDiagId > binary_matrix_max){
-            int n = (binary_matrix_max+binary_matrix_min) - locDiagId-1;
-            int finalcell = (binary_matrix_max) * (binary_matrix_min); 
-            locSum = finalcell - n*(n+1)/2; //fill in lower right triangle of the matrix
-            diagOffset[locDiagId] = locSum;
-//	    printf("RIGHT CORNER runs from binary_matrix_max = %d to finalcell = %d\n",binary_matrix_max,  finalcell);
-            //printf("RIGHT CORNER inside loop thread_Id = %d cyc = %d locSum = %d locDiagId = %d\n", thread_Id, cyc, locSum, locDiagId);
-          }
-          else {
-            locSum = ((binary_matrix_min)*(binary_matrix_min+1)/2) +(binary_matrix_min)*(locDiagId-binary_matrix_min);
-            diagOffset[locDiagId] = locSum; //fill in constant diagonals of the matrix
-            //printf("MIDDLE SECTION inside loop thread_Id = %d cyc = %d locSum = %d locDiagId = %d\n", thread_Id, cyc, locSum, locDiagId);
-          }
-        }
-      }
-  //       if(thread_Id == 0){
-    //      printf("TABLE 1 : cycles = %d, binary_matrix_height = %d, minSize = %d, maxSize = %d, finalcell = %d\n",(minSize + binary_matrix_height+1)/minSize + 1, binary_matrix_height, minSize, maxSize, (binary_matrix_height) * (minSize)+1 );
-      //    for(int b = 0; b< minSize + binary_matrix_height-1; b++) printf("%d ", diagOffset[b]);
-        // }
+	    //printf("# cycles = %d, minSize = %d, binary_matrix_min + binary_matrix_max = %d\n", (binary_matrix_min + binary_matrix_max+1)/minSize + 1, minSize, binary_matrix_min + binary_matrix_max);
+    //};
+    // int finalcell;
+    // for (int cyc = 0; cyc <= (binary_matrix_min + binary_matrix_max+1)/minSize + 1; cyc++){
+    // int locDiagId = thread_Id+cyc*minSize;
+    //    if (locDiagId < binary_matrix_min + binary_matrix_max ){
+    //      if(locDiagId < binary_matrix_min){
+    //        locSum = (locDiagId) * (locDiagId + 1)/2; //fill in upper left triangle in matrix
+    //        diagOffset[locDiagId]= locSum;
+	  //        //printf("LEFT CORNER runs from 0 to %d\n", binary_matrix_min-1);
+    //        //printf("LEFT CORNER inside loop thread_Id = %d cyc = %d locSum = %d locDiagId = %d\n", thread_Id, cyc, locSum, locDiagId);
+    //      }
+    //      else if (locDiagId > binary_matrix_max){
+    //        int n = (binary_matrix_max+binary_matrix_min) - locDiagId-1;
+    //        finalcell = (binary_matrix_max) * (binary_matrix_min); 
+    //        locSum = finalcell - n*(n+1)/2; //fill in lower right triangle of the matrix
+    //        diagOffset[locDiagId] = locSum;
+	  //        //printf("RIGHT CORNER runs from binary_matrix_max = %d to finalcell = %d\n",binary_matrix_max,  finalcell);
+    //       //printf("RIGHT CORNER inside loop thread_Id = %d cyc = %d locSum = %d locDiagId = %d\n", thread_Id, cyc, locSum, locDiagId);
+    //      }
+    //      else {
+    //        locSum = ((binary_matrix_min)*(binary_matrix_min+1)/2) +(binary_matrix_min)*(locDiagId-binary_matrix_min);
+    //        diagOffset[locDiagId] = locSum; //fill in constant diagonals of the matrix
+    //        //printf("MIDDLE SECTION inside loop thread_Id = %d cyc = %d locSum = %d locDiagId = %d\n", thread_Id, cyc, locSum, locDiagId);
+    //      }
+    //    }
+    //  }
+        // if(thread_Id == 0){
+          //printf("TABLE 1 : cycles = %d, binary_matrix_height = %d, minSize = %d, maxSize = %d, finalcell = %d\n",(minSize + binary_matrix_height+1)/minSize + 1, binary_matrix_height, minSize, maxSize, (binary_matrix_height) * (minSize)+1 );
+          //for(int b = 0; b< minSize + binary_matrix_height-1; b++) printf("%d ", diagOffset[b]);
+          //printf("\n");
+         //}
 
-    //if(thread_Id == 0){
-      //printf("TABLE 2 : cycles = %d, binary_matrix_height = %d, minSize = %d, maxSize = %d, finalcell = %d\n",(minSize + binary_matrix_height+1)/minSize + 1, binary_matrix_height, minSize, maxSize, (binary_matrix_height) * (minSize)+1 );
-      //for(int b = 0; b< minSize + binary_matrix_height-1; b++) printf("%d ", diagOffset[b]);
-    //}
-    
+      for(int diag = 0; diag < lengthSeqA + lengthSeqB - 1; diag++) 
+     {
+        
+         int locDiagId = diag;
+         if(thread_Id == 0)
+         {
+            
+             if(locDiagId <= binary_matrix_min + 1)
+             {
+                 locSum += locDiagId;
+                 diagOffset[locDiagId] = locSum;
+             }
+             else if(locDiagId > binary_matrix_max + 1)
+             {
+                 locSum += (binary_matrix_min + 1) - (locDiagId - (binary_matrix_max + 1));
+                 diagOffset[locDiagId] = locSum;
+             }
+             else
+             {
+                 locSum += binary_matrix_min + 1;
+                 diagOffset[locDiagId] = locSum;
+             }
+             diagOffset[lengthSeqA + lengthSeqB] = locSum + 2; //what is this for?
+            
+             //printf("diag = %d, diagOffset = %d\n", locDiagId, diagOffset[locDiagId]);
+         }
+     }
+   
      __syncthreads(); //to make sure prefixSum is calculated before the threads start calculations.    
 
   //initializing registers for storing diagonal values for three recent most diagonals (separate tables for H, E, F
-    short _curr_H = 0, _curr_F = -100, _curr_E = -100; //-100 acts as neg infinity
-    short _prev_H = 0, _prev_F = -100, _prev_E = -100;
-    short _prev_prev_H = 0, _prev_prev_F = -100, _prev_prev_E = -100;
-    short _temp_Val = 0;
+    short _H0 = 0, _F0 = -100, _E0 = -100; //-100 acts as neg infinity
+    short _H1 = 0, _F1 = -100, _E1 = -100;
+    short _H2 = 0, _F2 = -100, _E2 = -100;
+    short _H3 = 0, _E3 = -100;
+    short _H4 = 0;
 
-   __shared__ short sh_prev_E[32]; // one such element is required per warp
-   __shared__ short sh_prev_H[32];
-   __shared__ short sh_prev_prev_H[32];
+  
+   __shared__ short sh_E2[32];// one such element is required per warp
+   __shared__ short sh_E3[32];
+  
+   __shared__ short sh_H2[32];
+   __shared__ short sh_H3[32];
+   __shared__ short sh_H4[32];
 
-   __shared__ short local_spill_prev_E[1024];// each threads local spill,
-   __shared__ short local_spill_prev_H[1024];
-   __shared__ short local_spill_prev_prev_H[1024];
+
+   __shared__ short local_spill_E2[1024];// each threads local spill,
+   __shared__ short local_spill_E3[1024];
+  
+   __shared__ short local_spill_H2[1024];
+   __shared__ short local_spill_H3[1024];
+   __shared__ short local_spill_H4[1024];
 
 
     __syncthreads(); // to make sure all shmem allocations have been initialized
-
-    
-    for(int diag = 0; diag < (lengthSeqA + lengthSeqB-1)/2-2; diag++)
+ 
+    unsigned short diagId, locOffset;
+    //if(thread_Id == 0 )printf("Number of diagonals to print = %d, minSize = %d, binary_matrix_height = %d\n", (minSize + binary_matrix_height-1), minSize, binary_matrix_height);
+    for(int diag = 0; diag < (minSize + binary_matrix_height-1); diag++)
     {  // iterate for the number of anti-diagonals
-        //test
-        unsigned short diagId = i/2 + j; 
-        //unsigned short diagId    = i + j;
-        unsigned short locOffset = 0;
-        if(diagId < binary_matrix_max) 
-        {
-            locOffset = j;
-        }
-        else
-        {
-          //unsigned short myOff = diagId - maxSize + 1;
-          unsigned short myOff = diagId - binary_matrix_max+1;
-          locOffset            = j - myOff;
-        }
-
-
-        is_valid = is_valid - (diag < minSize || diag >= maxSize); //move the pointer to left by 1 if cnd true
-
-	      _temp_Val = _prev_H; // value exchange happens here to setup registers for next iteration
-	      _prev_H = _curr_H;
-	      _curr_H = _prev_prev_H;
-	      _prev_prev_H = _temp_Val;
-         _curr_H = 0;
-
-        _temp_Val = _prev_E;
-        _prev_E = _curr_E;
-        _curr_E = _prev_prev_E;
-        _prev_prev_E = _temp_Val;
-        _curr_E = -100;
-
-        _temp_Val = _prev_F;
-        _prev_F = _curr_F;
-        _curr_F = _prev_prev_F;
-        _prev_prev_F = _temp_Val;
-        _curr_F = -100;
-
+    ///set up value exchange
+       
+        diagId = i/2 + j; 
+        //if(thread_Id == THREAD_TO_PRINT) printf("diag= %d, i = %d, i/2 = %d, j = %d\n", diag, i, i/2, j);
+        locOffset = 0;
+        locOffset = (diagId < binary_matrix_max) ? j : j - (diagId - binary_matrix_max+1); //offset shrinks after you hit the max height of the matrix, +1 is because we index by 0
+        is_valid = is_valid - 1; //move the pointer to left by 1
+        //if(thread_Id == 0) printf("diag = %d, is_valid = %p, is_valid[0] = %d\n", diag, is_valid, is_valid[0]);
+       
+        H_temp = 0;
+	      // value exchange happens here (iterating by 2) to setup registers for next iteration
+	      _H4 = _H2;
+        _H3 = _H1;
+        _H2 = _H0;
+        _H1 = 0;
+        _H0 = 0;
+      
+        _E3 = _E1;
+        _E2 = _E0;
+        _E1 = -100;
+        _E0 = -100;
+       
+        _F2 = _F0;
+        _F1 = -100;
+        _F0 = -100;
 
         if(laneId == 31)
         { // if you are the last thread in your warp then spill your values to shmem
-          sh_prev_E[warpId] = _prev_E;
-          sh_prev_H[warpId] = _prev_H;
-		      sh_prev_prev_H[warpId] = _prev_prev_H;
+        
+          sh_E2[warpId] = _E2;
+          sh_E3[warpId] = _E3;
+      
+		      sh_H2[warpId] = _H2;
+          sh_H3[warpId] = _H3;
+		      sh_H4[warpId] = _H4;
         }
 
-        if(diag >= maxSize)
+        if(diag >= binary_matrix_height)
         { // if you are invalid in this iteration, spill your values to shmem
-          local_spill_prev_E[thread_Id] = _prev_E;
-          local_spill_prev_H[thread_Id] = _prev_H;
-          local_spill_prev_prev_H[thread_Id] = _prev_prev_H;
+        
+          local_spill_E2[thread_Id] = _E2;
+          local_spill_E3[thread_Id] = _E3;
+       
+          local_spill_H2[thread_Id] = _H2;
+          local_spill_H3[thread_Id] = _H3;
+          local_spill_H4[thread_Id] = _H4;
         }
 
         __syncthreads(); // this is needed so that all the shmem writes are completed.
-
+    
         if(is_valid[thread_Id] && thread_Id < minSize)
         {
+          //printf("thread_Id = %d, i=%d\n", thread_Id, i);
           unsigned mask  = __ballot_sync(__activemask(), (is_valid[thread_Id] &&( thread_Id < minSize)));
-          short fVal = _prev_F + extendGap;
-          short hfVal = _prev_H + startGap;
-          short valeShfl = __shfl_sync(mask, _prev_E, laneId- 1, 32);
-          short valheShfl = __shfl_sync(mask, _prev_H, laneId - 1, 32);
-          short eVal=0, heVal = 0;
 
-          if(diag >= maxSize) // when the previous thread has phased out, get value from shmem
+          // Calculations for i = even
+          // First get the values we need from our own thread
+          short fVal = _F2 + extendGap;
+          short hfVal = _H2 + startGap;
+          // Then use register shuffle to get the values from the previous thread
+          short vale2Shfl = __shfl_sync(mask, _E2, laneId - 1, 32);
+          short vale3Shfl = __shfl_sync(mask, _E3, laneId - 1, 32);
+          short valh2Shfl = __shfl_sync(mask, _H2, laneId - 1, 32);
+          short valh3Shfl = __shfl_sync(mask, _H3, laneId - 1, 32);
+          short valh4Shfl = __shfl_sync(mask, _H4, laneId - 1, 32);
+
+          //if(thread_Id == THREAD_TO_PRINT) printf("h2=%d, h3=%d, h4=%d\n", valh2Shfl, valh3Shfl, valh4Shfl);
+         
+          short eVal=0, heVal = 0, hdVal = 0;
+
+          int mm_score = ((longer_seq[i] == myColumnChar) ? matchScore : misMatchScore);
+         
+          //if(thread_Id == THREAD_TO_PRINT) printf("%c, %c, %d, ", longer_seq[i],myColumnChar,mm_score );
+          if(diag >=binary_matrix_height) // when the previous thread has phased out, get value from shmem
           {
-            eVal = local_spill_prev_E[thread_Id - 1] + extendGap;
-            heVal = local_spill_prev_H[thread_Id - 1]+ startGap;
+            eVal = local_spill_E3[thread_Id - 1] + extendGap;
+            heVal = local_spill_H3[thread_Id - 1]+ startGap;
+            hdVal = local_spill_H4[thread_Id - 1]+ mm_score;
           }
           else
           {
-            eVal =((warpId !=0 && laneId == 0)?sh_prev_E[warpId-1]: valeShfl) + extendGap;
-            heVal =((warpId !=0 && laneId == 0)?sh_prev_H[warpId-1]:valheShfl) + startGap;
+            //potentially could combine these into  one if statement instead of 3
+            eVal =((warpId !=0 && laneId == 0)?sh_E3[warpId-1]: vale3Shfl) + extendGap;
+            heVal =((warpId !=0 && laneId == 0)?sh_H3[warpId-1]:valh3Shfl) + startGap;
+            hdVal = ((warpId !=0 && laneId == 0)?sh_H4[warpId-1]:valh4Shfl) + mm_score; 
           }
 
-           if(warpId == 0 && laneId == 0) // make sure that values for lane 0 in warp 0 is not undefined
-           {
-              eVal = 0;
-              heVal = 0;
-           }
-      		_curr_F = (fVal > hfVal) ? fVal : hfVal;
-          
-          if (fVal > hfVal){ //record F value in H_temp 0b00000001
-                H_temp = H_temp | 1;
-          } else { //record F value in H_temp 0b00000000
-                H_temp = H_temp & (~1);
+          if(warpId == 0 && laneId == 0){
+            eVal = 0 + extendGap;
+            heVal = 0 + startGap;
+            hdVal = 0 + mm_score;
           }
 
-      		_curr_E = (eVal > heVal) ? eVal : heVal;
-          if (j!=0){
-            if (eVal > heVal) { //record E value in H_temp 0b00000010
-              H_temp = H_temp | 2;
-            } else { //record E value in H_temp 0b00000000
-              H_temp = H_temp & (~2);
-            }
-          }
-          short testShufll = __shfl_sync(mask, _prev_prev_H, laneId - 1, 32);
-          short final_prev_prev_H = 0;
-          if(diag >= maxSize)
-          {
-            final_prev_prev_H = local_spill_prev_prev_H[thread_Id - 1];
-          }
-          else
-          {
-            final_prev_prev_H =(warpId !=0 && laneId == 0)?sh_prev_prev_H[warpId-1]:testShufll;
-          }
 
-          if(warpId == 0 && laneId == 0) final_prev_prev_H = 0;
-          short diag_score = final_prev_prev_H + ((longer_seq[i] == myColumnChar) ? matchScore : misMatchScore);
-          _curr_H = findMaxFour(diag_score, _curr_F, _curr_E, 0, &ind);
-          
+      		_F1 = (fVal > hfVal) ? fVal : hfVal;
+          H_temp = (fVal > hfVal) ? ( H_temp = H_temp | 1) : (H_temp = H_temp & (~1)); //record F value in H_temp 0b00000001 or H_temp 0b00000000
+          //if (thread_Id == 0) printf("Calculating _F1 - fVal = %d, hfVal = %d, _F1 = %d\n", fVal, hfVal, _F1);
+
+      		_E1 = (eVal > heVal) ? eVal : heVal;
+          if (j!=0) H_temp = (eVal > heVal) ? (H_temp = H_temp | 2) : (H_temp = H_temp & (~2));
+          //if (thread_Id == 0) printf("Calculating _E1 - eVal = %d, heVal = %d, _E1 = %d\n", eVal, heVal, _E1);
+          //short diag_score = hdVal + mm_score;
+          _H1 = findMaxFour(hdVal, _F1, _E1, 0, &ind);
+          //if (thread_Id == THREAD_TO_PRINT) printf("Calculating _H1 - _F1 = %d, _E1 = %d, diag_score = %d, _H1 = %d\n", _F1, _E1, hdVal, _H1);
+          //if (thread_Id == THREAD_TO_PRINT && block_Id == BLOCK_TO_PRINT) printf("i = %d, %d\n",i, _H1);
+          // can all go to one line of code
+
           if (ind == 0) { // diagonal cell is max, set bits to 0b00001100
                 H_temp = H_temp | 4;     // set bit 0b00000100
                 H_temp = H_temp | 8;     // set bit 0b00001000
@@ -808,43 +841,110 @@ gpu_bsw::sequence_dna_kernel_traceback(char* seqA_array, char* seqB_array, unsig
                 H_temp = H_temp & (~4);  //clear bit
                  //printf("*");
           }
-          
-         // if (i%2==0){
-            //char H_temp_old = H_temp;
-            //H_temp = H_temp << 4;
-  
-            //printf("tid = %d, i = %d, Moving Lower bytes to upper bytes in H_PTR = H_temp_old = %02x, H_temp_new = %02x\n", thread_Id, i, H_temp_old, H_temp);
-          //} else {
-            H_ptr[diagOffset[diagId] + locOffset] =  H_temp;
-            //printf("INDEX=%d, tid=%d, i=%d, diagId=%d, diagOffset[diagId]=%d, offset=%d =========>H_ptr=%02x\n",diagOffset[diagId] + locOffset, thread_Id, i, diagId, diagOffset[diagId], locOffset, H_temp);
-
-            //if (thread_Id == 38) printf("tid = %d, i = %d, WRITING INTO H_PTR table = H_temp = %02x, with diagId = %d, locOffset = %d, index = %d, H_ptr[index] = %02x\n", thread_Id, i, H_temp, diagId, locOffset,diagOffset[diagId] + locOffset, H_ptr[diagOffset[diagId] + locOffset] );
-            //if (thread_Id == 38) printf("H_temp = %02x, H_ptr[5614]=%02x, H_ptr[] = %02x\n",H_temp, H_ptr[5614],H_ptr[diagOffset[diagId] + locOffset]);
-       	 // };
-        
-	        if (_curr_H > thread_max) {
+          //if(thread_Id == THREAD_TO_PRINT) printf("H_temp before shift = %02x, i = %d, j = %d \n", H_temp, i, thread_Id);
+          //Finished with calculations for i=even so move bits to upper half of H_temp 
+          H_temp = H_temp << 4;
+          //if(thread_Id == THREAD_TO_PRINT) printf("H_temp after shift = %02x, i = %d, j = %d \n", H_temp, i, thread_Id);
+          //Check if the maximum score is at this location
+          if (_H1 > thread_max) {
 	  	      thread_max_i = i;
 		        thread_max_j = thread_Id;
-		        thread_max = _curr_H;
+		        thread_max = _H1;
 	        }
+          //if(thread_Id == THREAD_TO_PRINT) printf("thread_Id = %d, _H1 = %d, i = %d, thread_max= %d\n", thread_Id, _H1, i, thread_max);
+          //Increment i and repeat above for i=odd
+          i++;
+      
+          // First get the values we have in our thread
+          fVal = _F1 + extendGap;
+          hfVal = _H1 + startGap;      
 
-          i=i+2;
-       }
-       //needed in case the last i was even and that row didn't get saved yet.
-       //H_ptr[diagOffset[diagId] + locOffset] =  H_temp;  THIS NEEDED TO COME OUT
+          eVal=0, heVal = 0, hdVal = 0;
+
+          mm_score = ((longer_seq[i] == myColumnChar) ? matchScore : misMatchScore);
+          //if(thread_Id == THREAD_TO_PRINT) printf("%c, %c, %d, ", longer_seq[i],myColumnChar,mm_score );
+          if(diag >= binary_matrix_height) // when the previous thread has phased out, get value from shmem
+          {
+            eVal = local_spill_E2[thread_Id - 1] + extendGap;
+            heVal = local_spill_H2[thread_Id - 1]+ startGap;
+            hdVal = local_spill_H3[thread_Id - 1] + mm_score;
+          }
+          else
+          {
+            //potentially could combine these into  one if statement instead of 3 comparisons
+            eVal =((warpId !=0 && laneId == 0)?sh_E2[warpId-1]: vale2Shfl) + extendGap;
+            heVal =((warpId !=0 && laneId == 0)?sh_H2[warpId-1]:valh2Shfl) + startGap;
+            hdVal = ((warpId !=0 && laneId == 0)?sh_H3[warpId-1]:valh3Shfl)+ mm_score; 
+          }
+
+          if(warpId == 0 && laneId == 0){
+            eVal = 0 + extendGap;
+            heVal = 0 + startGap;
+            hdVal = 0 + mm_score;
+          }
+
+      		_F0 = (fVal > hfVal) ? fVal : hfVal;
+          H_temp = (fVal > hfVal) ? ( H_temp = H_temp | 1) : (H_temp = H_temp & (~1)); //record F value in H_temp 0b00000001 or H_temp 0b00000000
+          //if (thread_Id == 0) printf("Calculating _F0 - fVal = %d, hfVal = %d, _F0 = %d\n", fVal, hfVal, _F1);
+      		_E0 = (eVal > heVal) ? eVal : heVal;
+          if (j!=0) H_temp = (eVal > heVal) ? (H_temp = H_temp | 2) : (H_temp = H_temp & (~2));
+           //if (thread_Id == 0) printf("Calculating _E0 - eVal = %d, heVal = %d, _E0 = %d\n", eVal, heVal, _E0);
+         
+          _H0 = findMaxFour(hdVal, _F0, _E0, 0, &ind);
+          //if (thread_Id == THREAD_TO_PRINT) printf("Calculating _H1 - _F1 = %d, _E1 = %d, diag_score = %d, _H1 = %d\n", _F1, _E1, hdVal, _H1);
+          //if (thread_Id == THREAD_TO_PRINT) printf("i = %d, %d\n",i, _H1);
+          // can all go to one line of code
+
+          if (ind == 0) { // diagonal cell is max, set bits to 0b00001100
+                H_temp = H_temp | 4;     // set bit 0b00000100
+                H_temp = H_temp | 8;     // set bit 0b00001000
+                //printf("\\");
+            } else if (ind == 1) {       // left cell is max, set bits to 0b00001000
+                H_temp = H_temp & (~4);  // clear bit
+                H_temp = H_temp | 8;     // set bit 0b00001000
+                 //printf("-");
+            } else if (ind == 2) {       // top cell is max, set bits to 0b00000100
+                H_temp = H_temp & (~8);  //clear bit
+                H_temp = H_temp | 4;     // set bit 0b00000100
+                 //printf("|");
+            } else {                     // score is 0, set bits to 0b00000000
+                H_temp = H_temp & (~8);  //clear bit
+                H_temp = H_temp & (~4);  //clear bit
+                 //printf("*");
+          }
+          //if(thread_Id == THREAD_TO_PRINT) printf("H_temp before shift = %02x, i = %d, j = %d \n", H_temp, i, thread_Id);
+          //if (thread_Id == THREAD_TO_PRINT  && block_Id == BLOCK_TO_PRINT) printf ("thread_max = %d, i = %d, j = %d\n", thread_max, thread_max_i, thread_max_j);
+          //Finished with calculations for i=even so move bits to upper half of H_temp 
+          //if(diagOffset[diagId] + locOffset > finalcell) printf("The index is outside the boundaries. block = %d, thread = %d, diagId = %d, prefix = %d, locOffset = %d, index = %d, finalcell = %d\n",block_Id, thread_Id, diagId, diagOffset[diagId],locOffset, diagOffset[diagId] + locOffset, finalcell);
+           H_ptr[diagOffset[diagId] + locOffset] =  H_temp;
+           //if(thread_Id == THREAD_TO_PRINT) printf("i = %d, j = %d, H_temp = %02x, index = %d, diagId = %d, prefix = %d, locOffset = %d, binary_matrix_max = %d\n", i, thread_Id, H_temp, diagOffset[diagId] + locOffset, diagId, diagOffset[diagId], locOffset, binary_matrix_max);
+          //Check if the maximum score is at this location
+        
+          if (_H0 > thread_max) {
+	  	      thread_max_i = i;
+		        thread_max_j = thread_Id;
+		        thread_max = _H0;
+	        }
+          //if(thread_Id == THREAD_TO_PRINT) printf("thread_Id = %d, _H0 = %d, thread_max= %d\n", thread_Id, _H0, thread_max);
+          
+          //Increment i 
+          i++;
+        }
+        
       __syncthreads(); 
     }
     __syncthreads();
-
-
+    //printf("thread_Id = %d, i = %d, thread_max_j = %d, thread_max_i = %d, thread_max= %d\n", thread_Id, i, thread_max_j, thread_max_i, thread_max);
     thread_max = blockShuffleReduce_with_index(thread_max, thread_max_i, thread_max_j, minSize);  // thread 0 will have the correct values
+
+    
     
     if(thread_Id == 0)
     {
         
         short current_i = thread_max_i;
         short current_j = thread_max_j;
-        //printf("thread_max = %d, current_i = %d, current_j = %d\n", thread_max, current_i, current_j);
+        //if(block_Id == BLOCK_TO_PRINT) printf("thread_max = %d, current_i = %d, current_j = %d\n", thread_max, current_i, current_j);
       
         if(lengthSeqA < lengthSeqB)
         {
@@ -861,12 +961,19 @@ gpu_bsw::sequence_dna_kernel_traceback(char* seqA_array, char* seqB_array, unsig
           top_scores[block_Id] = thread_max;
           
         }
-        
-        //gpu_bsw::traceBack(current_i, current_j, seqA_array, seqB_array, prefix_lengthA, 
-        //            prefix_lengthB, seqA_align_begin, seqA_align_end,
-        //            seqB_align_begin, seqB_align_end, maxMatrixSize, maxCIGAR,
-        //            longCIGAR, CIGAR, H_ptr, diagOffset);
+        //if(block_Id == BLOCK_TO_PRINT && thread_Id == 0) printf("DATA being passed to traceback: current_i = %d, current_j = %d, thread_max = %d\n",current_i, current_j, thread_max);
+        gpu_bsw::traceBack(current_i, current_j, seqA_array, seqB_array, prefix_lengthA, 
+                    prefix_lengthB, seqA_align_begin, seqA_align_end,
+                    seqB_align_begin, seqB_align_end, maxMatrixSize, maxCIGAR,
+                    longCIGAR, CIGAR, H_ptr, diagOffset);
 
+        //if(block_Id == BLOCK_TO_PRINT) {
+          //printf("CIGAR: ");
+          //for(int b = 0; b < 100; b++){
+            //printf("%c",CIGAR[b]);
+          //}
+          //printf("\n");
+        //}
     }
     __syncthreads();
 }
