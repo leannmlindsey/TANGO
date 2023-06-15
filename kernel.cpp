@@ -626,64 +626,64 @@ gpu_bsw::sequence_dna_kernel_traceback(char* seqA_array, char* seqB_array, unsig
     //if (thread_Id ==0) {
 	    //printf("# cycles = %d, minSize = %d, binary_matrix_min + binary_matrix_max = %d\n", (binary_matrix_min + binary_matrix_max+1)/minSize + 1, minSize, binary_matrix_min + binary_matrix_max);
     //};
-    // int finalcell;
-    // for (int cyc = 0; cyc <= (binary_matrix_min + binary_matrix_max+1)/minSize + 1; cyc++){
-    // int locDiagId = thread_Id+cyc*minSize;
-    //    if (locDiagId < binary_matrix_min + binary_matrix_max ){
-    //      if(locDiagId < binary_matrix_min){
-    //        locSum = (locDiagId) * (locDiagId + 1)/2; //fill in upper left triangle in matrix
-    //        diagOffset[locDiagId]= locSum;
-	  //        //printf("LEFT CORNER runs from 0 to %d\n", binary_matrix_min-1);
-    //        //printf("LEFT CORNER inside loop thread_Id = %d cyc = %d locSum = %d locDiagId = %d\n", thread_Id, cyc, locSum, locDiagId);
-    //      }
-    //      else if (locDiagId > binary_matrix_max){
-    //        int n = (binary_matrix_max+binary_matrix_min) - locDiagId-1;
-    //        finalcell = (binary_matrix_max) * (binary_matrix_min); 
-    //        locSum = finalcell - n*(n+1)/2; //fill in lower right triangle of the matrix
-    //        diagOffset[locDiagId] = locSum;
-	  //        //printf("RIGHT CORNER runs from binary_matrix_max = %d to finalcell = %d\n",binary_matrix_max,  finalcell);
-    //       //printf("RIGHT CORNER inside loop thread_Id = %d cyc = %d locSum = %d locDiagId = %d\n", thread_Id, cyc, locSum, locDiagId);
-    //      }
-    //      else {
-    //        locSum = ((binary_matrix_min)*(binary_matrix_min+1)/2) +(binary_matrix_min)*(locDiagId-binary_matrix_min);
-    //        diagOffset[locDiagId] = locSum; //fill in constant diagonals of the matrix
-    //        //printf("MIDDLE SECTION inside loop thread_Id = %d cyc = %d locSum = %d locDiagId = %d\n", thread_Id, cyc, locSum, locDiagId);
-    //      }
-    //    }
-    //  }
+    int finalcell;
+    for (int cyc = 0; cyc <= (binary_matrix_min + binary_matrix_max+1)/minSize + 1; cyc++){
+    int locDiagId = thread_Id+cyc*minSize;
+       if (locDiagId < binary_matrix_min + binary_matrix_max ){
+         if(locDiagId < binary_matrix_min){
+           locSum = (locDiagId) * (locDiagId + 1)/2; //fill in upper left triangle in matrix
+           diagOffset[locDiagId]= locSum;
+	         //printf("LEFT CORNER runs from 0 to %d\n", binary_matrix_min-1);
+           //printf("LEFT CORNER inside loop thread_Id = %d cyc = %d locSum = %d locDiagId = %d\n", thread_Id, cyc, locSum, locDiagId);
+         }
+         else if (locDiagId > binary_matrix_max){
+           int n = (binary_matrix_max+binary_matrix_min) - locDiagId-1;
+           finalcell = (binary_matrix_max) * (binary_matrix_min); 
+           locSum = finalcell - n*(n+1)/2; //fill in lower right triangle of the matrix
+           diagOffset[locDiagId] = locSum;
+	         //printf("RIGHT CORNER runs from binary_matrix_max = %d to finalcell = %d\n",binary_matrix_max,  finalcell);
+          //printf("RIGHT CORNER inside loop thread_Id = %d cyc = %d locSum = %d locDiagId = %d\n", thread_Id, cyc, locSum, locDiagId);
+         }
+         else {
+           locSum = ((binary_matrix_min)*(binary_matrix_min+1)/2) +(binary_matrix_min)*(locDiagId-binary_matrix_min);
+           diagOffset[locDiagId] = locSum; //fill in constant diagonals of the matrix
+           //printf("MIDDLE SECTION inside loop thread_Id = %d cyc = %d locSum = %d locDiagId = %d\n", thread_Id, cyc, locSum, locDiagId);
+         }
+       }
+     }
         // if(thread_Id == 0){
           //printf("TABLE 1 : cycles = %d, binary_matrix_height = %d, minSize = %d, maxSize = %d, finalcell = %d\n",(minSize + binary_matrix_height+1)/minSize + 1, binary_matrix_height, minSize, maxSize, (binary_matrix_height) * (minSize)+1 );
           //for(int b = 0; b< minSize + binary_matrix_height-1; b++) printf("%d ", diagOffset[b]);
           //printf("\n");
          //}
 
-      for(int diag = 0; diag < lengthSeqA + lengthSeqB - 1; diag++) 
-     {
+    //   for(int diag = 0; diag < lengthSeqA + lengthSeqB - 1; diag++) 
+    //  {
         
-         int locDiagId = diag;
-         if(thread_Id == 0)
-         {
+    //      int locDiagId = diag;
+    //      if(thread_Id == 0)
+    //      {
             
-             if(locDiagId <= binary_matrix_min + 1)
-             {
-                 locSum += locDiagId;
-                 diagOffset[locDiagId] = locSum;
-             }
-             else if(locDiagId > binary_matrix_max + 1)
-             {
-                 locSum += (binary_matrix_min + 1) - (locDiagId - (binary_matrix_max + 1));
-                 diagOffset[locDiagId] = locSum;
-             }
-             else
-             {
-                 locSum += binary_matrix_min + 1;
-                 diagOffset[locDiagId] = locSum;
-             }
-             diagOffset[lengthSeqA + lengthSeqB] = locSum + 2; //what is this for?
+    //          if(locDiagId <= binary_matrix_min + 1)
+    //          {
+    //              locSum += locDiagId;
+    //              diagOffset[locDiagId] = locSum;
+    //          }
+    //          else if(locDiagId > binary_matrix_max + 1)
+    //          {
+    //              locSum += (binary_matrix_min + 1) - (locDiagId - (binary_matrix_max + 1));
+    //              diagOffset[locDiagId] = locSum;
+    //          }
+    //          else
+    //          {
+    //              locSum += binary_matrix_min + 1;
+    //              diagOffset[locDiagId] = locSum;
+    //          }
+    //          diagOffset[lengthSeqA + lengthSeqB] = locSum + 2; //what is this for?
             
-             //printf("diag = %d, diagOffset = %d\n", locDiagId, diagOffset[locDiagId]);
-         }
-     }
+    //          //printf("diag = %d, diagOffset = %d\n", locDiagId, diagOffset[locDiagId]);
+    //      }
+    //  }
    
      __syncthreads(); //to make sure prefixSum is calculated before the threads start calculations.    
 
