@@ -1,13 +1,6 @@
-# ADEPT-T 
-ADEPT-T adds traceback functionality to ADEPT, a GPU accelerated implementation of the Smith-Waterman alignment algorithm. Implementation details of ADEPT can be found in the publication here: https://rdcu.be/b7fhY. ADEPT uses GPU's two level parallelism to perform multiple sequence alignments in batches while using fine grained parallelism to accelerate each individual alignment.  Overall it provides several time faster performance in comparison to existing SIMD implementations for CPU, a comparative study with existing CPU and GPU methods has been provided in the publication mentioned above. ADEPT performs a complete smith-waterman alignment with affine gap penalities and can align both protein and DNA sequences.
-
-ADEPT-T introduces a novel diagonal major indexing method combined with a compressed binary representation of the traceback matrices to accelerate it on GPUs. Our analysis demonstrates that ADEPT-T is 3.5x and 35x faster than traceback stages in the current state-of-the-art SW libraries on GPU and CPU respectively. ADEPT-T's integration in MetaHipMer, a widely used large-scale genome assembler, demonstrated an overall speedup of 9% and accelerated the alignment module by 32% on average.  The github for the MHM2 integration is here: https://github.com/leannmlindsey/mhm2.git
-
-
-
-ADEPT-T provides a driver function that separates CUDA code from the main application which enables easy use and integeration in existing applications, effectively providing a drop in replacement for CPU libraries. The driver also enables balancing of alignments across all the GPUs available on a system.
-       
-
+# TANGO 
+Sequence alignment algorithms play a central role in most bioinformatics software. However, porting these algorithms to GPUs can be challenging due to their reliance on integer-heavy operations and irregular memory access patterns. Relatively less attention has been given to the traceback phase of these algorithms, which requires storing large matrices with irregular access patterns. Here, we present an optimized GPU implementation of the Smith-Waterman (SW) algorithm with a focus on the traceback phase. We leverage stacked diagonal-major indexing and compressed binary representation for efficient adaptation of the traceback phase to GPUs. Our proposed implementation achieves speedups of 12.6 and 9.9x compared to state-of-the-art CPU libraries for DNA and protein alignments respectively. It provides comparable performance to other GPU libraries
+for DNA while being the fastest SW library for protein alignments on GPUs. Further, we integrate TANGO into a large-scale metagenome assembly software to speed up a production workflow
  
 ### To Build:
 
